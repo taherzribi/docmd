@@ -68,12 +68,12 @@ def test_merged_header_cells_survive_cleanly():
     docmd actually guarantees - a well-formed, consistent table in the
     processed output, with the real data intact - is what's asserted."""
     raw = MarkerConverter().convert(str(FIXTURES / "merged_cells.pdf"), ConvertConfig())
-    raw_table_lines = [l for l in raw.markdown.splitlines() if l.strip().startswith("|")]
+    raw_table_lines = [line for line in raw.markdown.splitlines() if line.strip().startswith("|")]
     raw_col_counts = {line.count("|") for line in raw_table_lines}
     print(f"raw table: {len(raw_table_lines)} rows, column counts seen: {raw_col_counts}")
 
     result = convert_document(str(FIXTURES / "merged_cells.pdf"))
-    proc_table_lines = [l for l in result.markdown.splitlines() if l.strip().startswith("|")]
+    proc_table_lines = [line for line in result.markdown.splitlines() if line.strip().startswith("|")]
     proc_col_counts = {line.count("|") for line in proc_table_lines}
     assert len(proc_col_counts) == 1, f"docmd output has inconsistent column counts: {proc_col_counts}"
     assert "West" in result.markdown and "$1.2M" in result.markdown

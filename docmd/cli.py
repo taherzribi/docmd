@@ -38,7 +38,10 @@ def main() -> None:
     "--use-llm",
     is_flag=True,
     default=False,
-    help="Use an LLM pass for higher-fidelity table/form extraction (needs a provider API key set for Marker; has a real marginal cost).",
+    help=(
+        "Use an LLM pass for higher-fidelity table/form extraction "
+        "(needs a provider API key set for Marker; has a real marginal cost)."
+    ),
 )
 @click.option(
     "--image-mode",

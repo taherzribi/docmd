@@ -150,7 +150,7 @@ def test_clean_tables_drops_stray_duplicate_separator_row():
         "|----------------------------------------|-----|\n"
     )
     out = clean_tables(md)
-    lines = [l for l in out.splitlines() if l.strip()]
+    lines = [line for line in out.splitlines() if line.strip()]
     assert lines == [
         "| Attention(Q, K, V) = softmax(...)V | (1) |",
         "| --- | --- |",

@@ -59,9 +59,12 @@ def _normalize_block(header: list[str], data_rows: list[list[str]]) -> list[str]
     return out
 
 
+def _normalize_header_cells(cells: list[str]) -> list[str]:
+    return [c.strip().lower() for c in cells]
+
+
 def _headers_match(a: list[str], b: list[str]) -> bool:
-    norm = lambda cells: [c.strip().lower() for c in cells]
-    return norm(a) == norm(b)
+    return _normalize_header_cells(a) == _normalize_header_cells(b)
 
 
 def clean_tables(markdown: str) -> str:
@@ -104,7 +107,7 @@ def clean_tables(markdown: str) -> str:
         # treated as a literal data row of dashes. Drop any row that's
         # itself separator-shaped rather than rendering it as content.
         data_rows = [
-            _split_cells(l) for l in lines[j:block_end] if not _is_separator_row(l)
+            _split_cells(row_line) for row_line in lines[j:block_end] if not _is_separator_row(row_line)
         ]
 
         # Look ahead past blank lines / Marker's page separator for a
@@ -116,7 +119,13 @@ def clean_tables(markdown: str) -> str:
                 not lines[probe].strip() or lines[probe].strip() == _PAGE_SEPARATOR
             ):
                 probe += 1
-            if not (probe < len(lines) and _is_row(lines[probe]) and probe + 1 < len(lines) and _is_row(lines[probe + 1])):
+            has_next_block = (
+                probe < len(lines)
+                and _is_row(lines[probe])
+                and probe + 1 < len(lines)
+                and _is_row(lines[probe + 1])
+            )
+            if not has_next_block:
                 break
             next_header = _split_cells(lines[probe])
             if not _headers_match(header, next_header):
@@ -128,9 +137,9 @@ def clean_tables(markdown: str) -> str:
             while next_block_end < len(lines) and _is_row(lines[next_block_end]):
                 next_block_end += 1
             data_rows.extend(
-                _split_cells(l)
-                for l in lines[p:next_block_end]
-                if not _is_separator_row(l)
+                _split_cells(row_line)
+                for row_line in lines[p:next_block_end]
+                if not _is_separator_row(row_line)
             )
             k = next_block_end
 
