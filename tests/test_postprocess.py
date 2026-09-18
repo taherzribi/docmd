@@ -1,5 +1,6 @@
 from docmd.postprocess.heading_normalize import normalize_headings
 from docmd.postprocess.image_handling import apply_image_handling
+from docmd.postprocess.rtl_fix import fix_rtl_brackets
 from docmd.postprocess.table_cleanup import clean_tables
 
 
@@ -155,3 +156,39 @@ def test_clean_tables_drops_stray_duplicate_separator_row():
         "| Attention(Q, K, V) = softmax(...)V | (1) |",
         "| --- | --- |",
     ]
+
+
+def test_fix_rtl_brackets_swaps_reversed_citation_link():
+    """Real Marker output found converting a real Arabic Wikipedia article:
+    a citation number linked to a footnote came out with its wrapping
+    brackets reversed - `][1](#page-21-0)[` instead of `[1](#page-21-0)` - a
+    bidirectional-text extraction artifact from LTR punctuation embedded in
+    RTL script. The fixed form wraps the link in a literal `[...]` pair,
+    which renders as the clickable "[1]" Wikipedia's own citation style
+    shows - not a bare unwrapped link."""
+    md = "جبل كاترين ][1](#page-21-0)[ متر"
+    assert fix_rtl_brackets(md) == "جبل كاترين [[1](#page-21-0)] متر"
+
+
+def test_fix_rtl_brackets_swaps_bare_number_citation():
+    """Same bug, but for a citation marker with no hyperlink at all - a bare
+    number, still reversed the same way."""
+    md = "النيل وأرض النيل ]36[ حرفي"
+    assert fix_rtl_brackets(md) == "النيل وأرض النيل [36] حرفي"
+
+
+def test_fix_rtl_brackets_handles_adjacent_reversed_citations():
+    """Real Marker output: three citation markers chained together, only
+    the last two of which happened to be reversed - each one is fixed
+    independently without the fix bleeding across the boundary."""
+    md = "[24](#page-22-11)][23](#page-22-10)[][22](#page-22-9)["
+    assert fix_rtl_brackets(md) == "[24](#page-22-11)[[23](#page-22-10)][[22](#page-22-9)]"
+
+
+def test_fix_rtl_brackets_leaves_normal_markdown_links_alone():
+    """The pattern this targets (`]...[`) can only occur from the reversal
+    artifact - a correctly-ordered link always starts with `[`, never `]` -
+    so ordinary prose and links must pass through completely unchanged."""
+    md = "See [the docs](https://example.com/docs) for more, and [1](#fn1)[2](#fn2) too."
+    assert fix_rtl_brackets(md) == md
+

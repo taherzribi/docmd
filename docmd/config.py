@@ -27,6 +27,10 @@ class ConvertConfig:
             post-processing pass (see postprocess/heading_normalize.py).
         clean_tables: Run docmd's own table-cleanup post-processing pass
             (see postprocess/table_cleanup.py).
+        fix_rtl_brackets: Run docmd's own fix for reversed citation-style
+            square brackets in RTL-script documents (see
+            postprocess/rtl_fix.py). Safe to leave on for non-RTL documents -
+            the pattern it targets can't occur in correctly-ordered text.
         image_mode: How to represent images in the output Markdown.
             - "placeholder" (default): RAG-friendly. No binary image data is
               written; each image becomes a short, consistent placeholder
@@ -41,6 +45,7 @@ class ConvertConfig:
     force_ocr: bool = False
     normalize_headings: bool = True
     clean_tables: bool = True
+    fix_rtl_brackets: bool = True
     image_mode: str = "placeholder"
 
     def __post_init__(self) -> None:

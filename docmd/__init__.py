@@ -15,6 +15,7 @@ from docmd.converters.base import ConversionResult
 from docmd.converters.registry import get_converter
 from docmd.postprocess.heading_normalize import normalize_headings
 from docmd.postprocess.image_handling import apply_image_handling
+from docmd.postprocess.rtl_fix import fix_rtl_brackets
 from docmd.postprocess.table_cleanup import clean_tables
 
 __all__ = ["convert", "convert_document", "ConvertConfig", "ConversionResult"]
@@ -85,6 +86,8 @@ def _convert_path(
         markdown = clean_tables(markdown)
     if config.normalize_headings:
         markdown = normalize_headings(markdown)
+    if config.fix_rtl_brackets:
+        markdown = fix_rtl_brackets(markdown)
     markdown = apply_image_handling(markdown, result.images, config.image_mode, output_dir)
 
     return ConversionResult(

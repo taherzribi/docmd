@@ -49,6 +49,12 @@ distinction is the entire point of this document.
   binary data referenced at all), `alt-text` (real links, non-empty alt text, and the
   image file is actually written to `output_dir` if given), `skip` (removed entirely).
 
+**RTL citation brackets** (`docmd/postprocess/rtl_fix.py`)
+- A reversed `]...[` citation-bracket span (from bidirectional-text extraction of
+  LTR punctuation embedded in RTL script) is always corrected to `[...]`. Does not
+  cover the equivalent reversal for parentheses - see "What's explicitly not
+  guaranteed" below.
+
 **Errors** (`docmd/errors.py`)
 - A small, fixed set of `DocmdError` subclasses for known failure categories:
   `UnsupportedFormatError`, `MissingExtraError`, `MissingSystemDependencyError`,
@@ -71,11 +77,25 @@ distinction is the entire point of this document.
 
 Found by real-world testing, not fixed:
 
-- **Form/checkbox structure.** Adjacent checkbox option labels (e.g. a tax form's
-  filing-status options) are not separated or structured - they extract as one
-  run-on phrase, identical to raw backend output.
-- **RTL bidirectional punctuation.** Citation brackets and similar LTR punctuation
-  embedded in right-to-left script can render reversed (`]1[` instead of `[1]`).
+- **Form/checkbox structure.** Confirmed against a real IRS W-4: Marker's layout
+  model does detect a `Form` block type (visible in `page_stats.block_counts`), so
+  it isn't invisible to the pipeline - but Marker renders `Form` blocks as flattened
+  prose, not a table or option list, and checkbox squares are vector graphics with
+  no text-layer representation at all, so nothing marks three filing-status options
+  as mutually-exclusive choices. Fixing this means operating on Marker's block tree
+  before it renders to Markdown - a real architecture change (docmd's post-processing
+  today only ever touches the already-rendered Markdown string), not a bounded fix.
+- **RTL bidirectional punctuation - square brackets fixed, parentheses not.** Found
+  via a real Arabic Wikipedia article: citation brackets wrapping a footnote link
+  came out reversed (`][1](#page-21-0)[` instead of `[1](#page-21-0)`), a bidirectional
+  text-extraction artifact from LTR punctuation embedded in RTL script. Fixed for
+  square brackets in `docmd/postprocess/rtl_fix.py` - safe because a correctly-ordered
+  Markdown link or reference can never start with `]`, so every `]...[` span is
+  unambiguously this artifact, never legitimate content. The same reversal affects
+  parentheses (`)6,000 km2(` instead of `(6,000 km2)`), left unfixed: normal prose
+  legitimately places two independent parentheticals back to back - "word (first) and
+  (second)" - which a naive `)...( -> (...)` swap would corrupt, and there's no
+  Markdown-syntax signal (like brackets have) to tell the two cases apart.
 - **Multi-column reading order in dense bibliographic/legal layouts.** Proven to
   fail once, on a patent's front-page citation block (that specific PDF wasn't kept
   as a fixture, per the policy against redistributing real-world documents, so it
