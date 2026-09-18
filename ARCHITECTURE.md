@@ -1,5 +1,11 @@
 # Architecture: Doc-to-Markdown API
 
+See [CONTRACT.md](CONTRACT.md) for what docmd actually guarantees about its output,
+independent of Marker or any future backend - the formalized version of a testing
+philosophy this project arrived at the hard way, via two real CI failures caused by
+tests that pinned Marker's exact raw output instead of docmd's own guarantees
+(commits `066fd1b` and part of `c7225c5`).
+
 ## The pitch (keep this pinned above your desk)
 We are not competing on conversion quality. We are selling **"hit an endpoint, get clean Markdown back"** — no Python env, no 8GB+ RAM, no GPU, no dependency hell. The open-source core proves the engine works and builds trust. The hosted API sells convenience.
 
@@ -160,11 +166,15 @@ Treat this folder as the actual differentiator. A thin wrapper is a weekend proj
 
 ## License clarity
 
-MIT for the `docmd` wrapper is fine and expected for an OSS trust play. Marker's code is
-Apache-2.0. Marker's *model weights* are under a modified Open RAIL-M license: free for
-research, personal use, and organizations under $5M funding/revenue; beyond that, a paid
-license from Datalab is required (see datalab.to/pricing). Re-check this before scaling
-the hosted API past that threshold.
+Full detail moved to [docs/licensing.md](docs/licensing.md) so it's maintained in one
+place instead of drifting between README and this file. Short version: MIT for the
+`docmd` wrapper is fine and expected; Marker's code (Apache-2.0) and model weights
+(modified Open RAIL-M, $5M funding/revenue threshold) are licensed separately, and the
+weights license is the one that actually constrains a commercial hosted API at scale.
+Re-check `docs/licensing.md` before scaling `api/` past that threshold, and get written
+clarification from Datalab on hosted-API competitiveness before a commercial launch -
+see "Positioning risk" above for why Datalab's own competing hosted API makes this
+worth resolving explicitly, not assuming.
 
 ## What "done" looks like for Stage 1 (this repo, today)
 

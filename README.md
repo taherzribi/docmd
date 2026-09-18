@@ -172,18 +172,18 @@ string-returning function) doesn't expose this; use `convert_document()` for it.
 clean output format, then runs its own post-processing pass
 (`docmd/postprocess/`) to fix table structure and normalize heading levels — see
 [ARCHITECTURE.md](ARCHITECTURE.md) for why this is the actual differentiation, not
-just a thin wrapper.
+just a thin wrapper, and [CONTRACT.md](CONTRACT.md) for exactly what's guaranteed
+about the output (and what isn't, yet) — independent of Marker or any future backend.
 
 ## License
 
 The `docmd` wrapper code is MIT — see [LICENSE](LICENSE).
 
-`docmd` depends on [Marker](https://github.com/datalab-to/marker), whose *code* is
-Apache-2.0 and whose *model weights* are licensed under a modified Open RAIL-M license:
-free for research, personal use, and organizations under $5M in funding or revenue.
-Commercial use beyond that threshold requires a license from
-[Datalab](https://www.datalab.to/pricing). This applies to you if you deploy `docmd`
-commercially at scale — check Marker's current license terms directly before doing so.
+`docmd` depends on [Marker](https://github.com/datalab-to/marker), whose code and
+model weights carry *separate* licenses — the weights license has a revenue/funding
+threshold that matters if you deploy commercially at scale. See
+[docs/licensing.md](docs/licensing.md) for the precise terms; don't rely on this
+sentence alone.
 
 ## Roadmap
 
