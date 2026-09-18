@@ -9,6 +9,30 @@ def test_heading_normalize_fixes_level_skip():
     assert out == "# Title\n## Subsection\n"
 
 
+def test_heading_normalize_fixes_level_skip_then_leaves_recovered_depth_alone():
+    """The exact pattern found in a real 27-page IMF report while stress-
+    testing against downloaded (not synthetic) documents: an H1 jumps
+    straight to H4 (skipping H2/H3), gets clamped to H2 - but a *later*
+    heading that's also originally H4 is left alone, because an H3 heading
+    in between legitimately re-establishes the depth. Never reproduced
+    synthetically (see skip_headings.pdf in git history, removed after
+    Marker's own layout model wouldn't cooperate) - this encodes the real
+    structure without redistributing the copyrighted source PDF."""
+    md = (
+        "# Summary of the Economy Classification\n"
+        "#### General Features and Composition of Groups\n"
+        "### Advanced Economies\n"
+        "#### Emerging Market and Developing Economies\n"
+    )
+    out = normalize_headings(md)
+    assert out == (
+        "# Summary of the Economy Classification\n"
+        "## General Features and Composition of Groups\n"
+        "### Advanced Economies\n"
+        "#### Emerging Market and Developing Economies\n"
+    )
+
+
 def test_heading_normalize_drops_empty_heading():
     md = "# Title\n##\nBody text.\n"
     out = normalize_headings(md)
