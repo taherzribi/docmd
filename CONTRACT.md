@@ -77,9 +77,32 @@ Found by real-world testing, not fixed:
 - **RTL bidirectional punctuation.** Citation brackets and similar LTR punctuation
   embedded in right-to-left script can render reversed (`]1[` instead of `[1]`).
 - **Multi-column reading order in dense bibliographic/legal layouts.** Proven to
-  work correctly on a two-column academic paper; proven to fail on a patent's
-  front-page citation block. No known rule yet for which case a given document falls
-  into.
+  fail once, on a patent's front-page citation block (that specific PDF wasn't kept
+  as a fixture, per the policy against redistributing real-world documents, so it
+  can't be re-run directly). Re-tested since against six more real documents - five
+  more patents spanning 1975-2021 (both front-page bibliographic blocks and
+  multi-column body text) and a 20-page excerpt of a genuinely 3-column Federal
+  Register issue - and all six read in correct order. The failure is real but appears
+  to be narrow or document-specific rather than a general multi-column defect; no
+  reproduction means no fix to make yet.
+- **Table/infobox cell dissociation.** Found via a real Chinese Wikipedia article
+  (中國): a sidebar infobox's "小儿经" (Xiao'erjing - Mandarin written in Arabic
+  script) row had its label and value extracted as two separate, disconnected
+  fragments - the value landed 18 lines earlier in the document, before the infobox
+  it belongs to even starts. Not a hallucination (the Arabic-script text is genuine
+  content, correctly recognized) - the backend's reading order detached a table
+  cell's value from its own row. A layout-detection issue in the backend, not
+  something docmd's structural post-processing (which operates on already-rendered
+  Markdown, not layout geometry) can reliably repair.
+- **Page rotation: not a gap.** A real patent PDF with one page's `/Rotate` flag set
+  to 90deg converted byte-for-byte identical to the unrotated original - the backend
+  respects rotation metadata transparently. Confirmed with a regression test
+  (`tests/test_postprocess_more_integration.py`) using a synthetic fixture.
+- **Large documents (500+ pages): not a gap.** A 961-page, purely text-layer PDF (no
+  OCR involved) converted completely and correctly - verified start and end content
+  against the real source text - in under two minutes, with peak memory around 8GB.
+  No crash, no truncation. Worth knowing for capacity planning (e.g. `docmd-api`'s
+  container memory limits) even though it isn't a defect.
 - **OCR reproducibility.** Running the identical file through the identical code path
   twice, in the same process, produced different text - confirmed directly, not
   inferred (28,916 vs 27,973 characters on a real degraded scan; individual word

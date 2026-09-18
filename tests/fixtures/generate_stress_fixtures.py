@@ -103,8 +103,34 @@ def generate_with_image() -> None:
     img_path.unlink()  # embedded in the PDF now, don't need the source file
 
 
+def generate_rotated_page() -> None:
+    """A 2-page document with the second page's `/Rotate` flag set to 90deg -
+    tests whether the backend respects PDF rotation metadata rather than
+    extracting the page's text sideways/garbled. Found worth testing after a
+    real downloaded patent PDF with a rotated page converted correctly; this
+    fixture keeps that regression covered without redistributing the real
+    file (per this project's policy against committing real-world
+    documents)."""
+    import pypdfium2 as pdfium
+
+    doc = SimpleDocTemplate(str(FIXTURES_DIR / "_gen_rotated.pdf"), pagesize=LETTER)
+    doc.build(
+        [
+            Paragraph("First page, not rotated.", body),
+            PageBreak(),
+            Paragraph("Second page, rotated ninety degrees in the PDF itself.", body),
+        ]
+    )
+
+    pdf = pdfium.PdfDocument(str(FIXTURES_DIR / "_gen_rotated.pdf"))
+    pdf[1].set_rotation(90)
+    pdf.save(str(FIXTURES_DIR / "rotated_page.pdf"))
+    (FIXTURES_DIR / "_gen_rotated.pdf").unlink()
+
+
 if __name__ == "__main__":
     generate_running_header()
     generate_merged_cells()
     generate_with_image()
+    generate_rotated_page()
     print(f"wrote stress fixtures to {FIXTURES_DIR}")

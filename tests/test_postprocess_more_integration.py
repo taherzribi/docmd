@@ -109,3 +109,14 @@ def test_placeholder_mode_never_writes_image_files(tmp_path):
     )
     assert "omitted" in result.markdown
     assert list(tmp_path.iterdir()) == []
+
+
+def test_rotated_page_extracts_upright_not_sideways():
+    """rotated_page.pdf has its second page's /Rotate flag set to 90deg.
+    Found worth testing after a real downloaded patent PDF with a rotated
+    page converted identically to its unrotated original - confirms the
+    backend reads PDF rotation metadata rather than extracting the page's
+    text sideways or garbled. See CONTRACT.md's "Page rotation" note."""
+    result = convert_document(str(FIXTURES / "rotated_page.pdf"))
+    assert "First page, not rotated." in result.markdown
+    assert "Second page, rotated ninety degrees in the PDF itself." in result.markdown
