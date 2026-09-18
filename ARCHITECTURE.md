@@ -23,7 +23,7 @@ trust.
 
 ```
                         +---------------------------+
-                        |   docmd (OSS library)      |  <- pip install docmd
+                        |   docmd (OSS library)      |  <- pip install docmd-cli
                         |   Python CLI + library     |  <- free, MIT license
                         |   wraps Marker under       |
                         |   the hood                 |
@@ -126,10 +126,10 @@ Treat this folder as the actual differentiator. A thin wrapper is a weekend proj
 
 ## Packaging: optional dependencies
 
-- `pip install docmd` -> core PDF conversion (Marker bundles OCR here already; there is
+- `pip install docmd-cli` -> core PDF conversion (Marker bundles OCR here already; there is
   no separate lean/no-OCR base install, since Marker's own base dependencies include
   `surya-ocr`)
-- `pip install docmd[full]` -> adds DOCX/PPTX/EPUB/XLSX support via Marker's `full` extra
+- `pip install docmd-cli[full]` -> adds DOCX/PPTX/EPUB/XLSX support via Marker's `full` extra
 
 ## License clarity
 

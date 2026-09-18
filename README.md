@@ -4,8 +4,12 @@
 
 Built for feeding documents into LLM and RAG pipelines, where clean Markdown beats raw text extraction.
 
+*(Published on PyPI as `docmd-cli` since `docmd` was already taken by an unrelated
+package — the import (`import docmd`) and CLI command (`docmd convert ...`) are
+unaffected.)*
+
 ```bash
-pip install docmd
+pip install docmd-cli
 docmd convert report.pdf
 ```
 
@@ -37,14 +41,14 @@ core, usable standalone today.
 |---|---|
 | PDF (text-based) | Markdown with preserved headings, lists, tables |
 | PDF (scanned) | Markdown via OCR — bundled by Marker, free |
-| DOCX | Markdown with formatting preserved (`pip install docmd[full]`) |
-| PPTX | Markdown, one section per slide (`pip install docmd[full]`) |
+| DOCX | Markdown with formatting preserved (`pip install docmd-cli[full]`) |
+| PPTX | Markdown, one section per slide (`pip install docmd-cli[full]`) |
 
 ## Quickstart
 
 **CLI**
 ```bash
-pip install docmd
+pip install docmd-cli
 docmd convert my-file.pdf -o output.md
 ```
 
@@ -62,11 +66,11 @@ with open("my-file.pdf", "rb") as f:
 
 ## Installing DOCX/PPTX support
 
-The base install (`pip install docmd`) covers PDF only and stays lean. DOCX and PPTX
-need Marker's own additional dependencies:
+The base install (`pip install docmd-cli`) covers PDF only and stays lean. DOCX and
+PPTX need Marker's own additional dependencies:
 
 ```bash
-pip install "docmd[full]"
+pip install "docmd-cli[full]"
 ```
 
 DOCX/PPTX conversion also needs [weasyprint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation)'s

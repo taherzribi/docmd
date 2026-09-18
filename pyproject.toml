@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "docmd"
+name = "docmd-cli"
 version = "0.1.0"
 description = "Convert PDFs, DOCX, and PPTX to clean, structure-preserving Markdown."
 readme = "README.md"
