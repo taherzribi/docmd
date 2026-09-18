@@ -110,15 +110,32 @@ def generate_rotated_page() -> None:
     real downloaded patent PDF with a rotated page converted correctly; this
     fixture keeps that regression covered without redistributing the real
     file (per this project's policy against committing real-world
-    documents)."""
+    documents).
+
+    Each page carries a full paragraph, not a single short sentence: a first
+    attempt with one bare line per page passed locally but failed in Linux CI
+    - the layout model classified the rotated page's lone line as a
+    PageFooter (which Marker excludes from output) rather than body text, a
+    borderline call that came out differently across platforms. That's the
+    same backend-non-determinism class CONTRACT.md already documents for OCR;
+    a real paragraph's worth of body text keeps this test clear of that
+    boundary instead of asserting on it."""
     import pypdfium2 as pdfium
 
     doc = SimpleDocTemplate(str(FIXTURES_DIR / "_gen_rotated.pdf"), pagesize=LETTER)
     doc.build(
         [
-            Paragraph("First page, not rotated.", body),
+            Paragraph(
+                "This is the first page, and it is not rotated. " * 8,
+                body,
+            ),
             PageBreak(),
-            Paragraph("Second page, rotated ninety degrees in the PDF itself.", body),
+            Paragraph(
+                "This is the second page, and its /Rotate flag is set to ninety "
+                "degrees in the PDF itself, though the text should still read "
+                "upright and in order once extracted. " * 6,
+                body,
+            ),
         ]
     )
 

@@ -118,5 +118,5 @@ def test_rotated_page_extracts_upright_not_sideways():
     backend reads PDF rotation metadata rather than extracting the page's
     text sideways or garbled. See CONTRACT.md's "Page rotation" note."""
     result = convert_document(str(FIXTURES / "rotated_page.pdf"))
-    assert "First page, not rotated." in result.markdown
-    assert "Second page, rotated ninety degrees in the PDF itself." in result.markdown
+    assert "first page, and it is not rotated" in result.markdown
+    assert "its /Rotate flag is set to ninety" in result.markdown

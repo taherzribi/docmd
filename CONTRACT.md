@@ -94,10 +94,18 @@ Found by real-world testing, not fixed:
   cell's value from its own row. A layout-detection issue in the backend, not
   something docmd's structural post-processing (which operates on already-rendered
   Markdown, not layout geometry) can reliably repair.
-- **Page rotation: not a gap.** A real patent PDF with one page's `/Rotate` flag set
-  to 90deg converted byte-for-byte identical to the unrotated original - the backend
-  respects rotation metadata transparently. Confirmed with a regression test
-  (`tests/test_postprocess_more_integration.py`) using a synthetic fixture.
+- **Page rotation: not a gap, but the first regression test for it broke CI.** A real
+  patent PDF with one page's `/Rotate` flag set to 90deg converted byte-for-byte
+  identical to the unrotated original on this machine - rotation itself is handled
+  transparently. The first synthetic fixture for this (one bare sentence per page)
+  passed locally but failed in Linux CI: the layout model classified the rotated
+  page's lone short line as a `PageFooter` (which Marker excludes from output)
+  instead of body text, a borderline call that differed by platform - the same
+  backend-non-determinism class as the OCR entry below, just in the layout model
+  instead of the recognition model, and the third time this exact category of test
+  has broken CI in this project's history. Fixed by giving the fixture a full
+  paragraph per page instead of a single line, which stays clear of that
+  classification boundary. See `tests/test_postprocess_more_integration.py`.
 - **Large documents (500+ pages): not a gap.** A 961-page, purely text-layer PDF (no
   OCR involved) converted completely and correctly - verified start and end content
   against the real source text - in under two minutes, with peak memory around 8GB.
