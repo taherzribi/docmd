@@ -149,6 +149,23 @@ docmd convert report.pdf -o output/report.md --image-mode alt-text
 
 `image_mode="skip"` drops images entirely - no placeholder, no files.
 
+## Provenance
+
+Every conversion carries tracking info in `result.provenance` - useful for "this
+converted differently yesterday" debugging:
+
+```python
+from docmd import convert_document
+
+result = convert_document("report.pdf")
+print(result.provenance)
+# {'docmd_version': '0.1.3', 'backend': 'marker', 'backend_version': '2.0.0',
+#  'ocr_used': False, 'conversion_duration_ms': 489}
+```
+
+Same shape regardless of which backend actually ran - `convert()` (the plain
+string-returning function) doesn't expose this; use `convert_document()` for it.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a

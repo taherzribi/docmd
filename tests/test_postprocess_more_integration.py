@@ -57,19 +57,25 @@ def test_running_header_does_not_leak_into_output():
 
 
 def test_merged_header_cells_survive_cleanly():
-    """merged_cells.pdf has a spanned header cell (colspan). Honest negative
-    result: Marker already renders this as a clean, consistent 5-column
-    table (blank cells for the spanned columns) with no ragged rows -
-    nothing for table_cleanup.py to fix here. Pinned so this doesn't
-    silently regress, and so nobody assumes this case needs a fix it
-    doesn't need."""
+    """merged_cells.pdf has a spanned header cell (colspan). On the machine
+    this was first written on, raw Marker already renders it as a clean,
+    consistent 5-column table with no ragged rows - an honest negative
+    result, nothing for table_cleanup.py to fix.
+
+    Same lesson as test_inconsistent_heading_levels_get_normalized_to_match:
+    the exact raw structure is backend inference output, not something
+    docmd controls, so it's reported (via print) rather than asserted. What
+    docmd actually guarantees - a well-formed, consistent table in the
+    processed output, with the real data intact - is what's asserted."""
     raw = MarkerConverter().convert(str(FIXTURES / "merged_cells.pdf"), ConvertConfig())
-    table_lines = [l for l in raw.markdown.splitlines() if l.strip().startswith("|")]
-    # spanned quarter-label row, column-label row, separator, 2 data rows.
-    assert len(table_lines) == 5
-    assert all(line.count("|") == 6 for line in table_lines)  # 5 columns, consistent
+    raw_table_lines = [l for l in raw.markdown.splitlines() if l.strip().startswith("|")]
+    raw_col_counts = {line.count("|") for line in raw_table_lines}
+    print(f"raw table: {len(raw_table_lines)} rows, column counts seen: {raw_col_counts}")
 
     result = convert_document(str(FIXTURES / "merged_cells.pdf"))
+    proc_table_lines = [l for l in result.markdown.splitlines() if l.strip().startswith("|")]
+    proc_col_counts = {line.count("|") for line in proc_table_lines}
+    assert len(proc_col_counts) == 1, f"docmd output has inconsistent column counts: {proc_col_counts}"
     assert "West" in result.markdown and "$1.2M" in result.markdown
 
 

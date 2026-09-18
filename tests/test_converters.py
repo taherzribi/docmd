@@ -32,6 +32,21 @@ def test_convert_pdf_produces_structured_markdown():
     assert "|" in result.markdown  # a table survived
 
 
+def test_convert_document_includes_provenance():
+    """docmd's own tracking info (docmd_version, backend, backend_version,
+    ocr_used, conversion_duration_ms), same shape regardless of which
+    backend ran - see docmd/converters/base.py:ConversionResult.provenance.
+    For debugging "this converted differently yesterday"."""
+    result = convert_document(str(FIXTURES / "sample.pdf"))
+    prov = result.provenance
+    assert prov["backend"] == "marker"
+    assert prov["docmd_version"] != "unknown"
+    assert prov["backend_version"] != "unknown"
+    assert prov["ocr_used"] is False  # sample.pdf has a real text layer
+    assert isinstance(prov["conversion_duration_ms"], int)
+    assert prov["conversion_duration_ms"] > 0
+
+
 @pytest.mark.skipif(
     not _HAS_WEASYPRINT_DEPS,
     reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed "

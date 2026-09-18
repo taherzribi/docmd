@@ -98,7 +98,14 @@ def clean_tables(markdown: str) -> str:
         block_end = j
         while block_end < len(lines) and _is_row(lines[block_end]):
             block_end += 1
-        data_rows = [_split_cells(l) for l in lines[j:block_end]]
+        # A stray extra separator row (found via a real two-column paper: a
+        # single-row "table" - actually a numbered equation - with two
+        # separator rows back to back and no real data) would otherwise get
+        # treated as a literal data row of dashes. Drop any row that's
+        # itself separator-shaped rather than rendering it as content.
+        data_rows = [
+            _split_cells(l) for l in lines[j:block_end] if not _is_separator_row(l)
+        ]
 
         # Look ahead past blank lines / Marker's page separator for a
         # continuation: another table block whose header repeats this one.
@@ -120,7 +127,11 @@ def clean_tables(markdown: str) -> str:
             next_block_end = p
             while next_block_end < len(lines) and _is_row(lines[next_block_end]):
                 next_block_end += 1
-            data_rows.extend(_split_cells(l) for l in lines[p:next_block_end])
+            data_rows.extend(
+                _split_cells(l)
+                for l in lines[p:next_block_end]
+                if not _is_separator_row(l)
+            )
             k = next_block_end
 
         out.extend(_normalize_block(header, data_rows))

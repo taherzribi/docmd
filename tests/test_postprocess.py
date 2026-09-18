@@ -135,3 +135,23 @@ def test_image_handling_drops_fully_empty_image_reference():
     assert apply_image_handling(md, images={}, mode="placeholder") == "*[image omitted]*"
     assert apply_image_handling(md, images={}, mode="skip") == ""
     assert apply_image_handling(md, images={}, mode="alt-text") == "![Image 1](real.jpeg)"
+
+
+def test_clean_tables_drops_stray_duplicate_separator_row():
+    """Real Marker output found stress-testing a real two-column paper
+    ("Attention Is All You Need"): a single-row "table" - actually a
+    numbered equation rendered as a 1-cell table - came out with two
+    separator rows back to back and no real data row. The old code treated
+    the second separator as a literal data row and printed a row of dashes
+    into the output."""
+    md = (
+        "| Attention(Q, K, V) = softmax(...)V | (1) |\n"
+        "|----------------------------------------|-----|\n"
+        "|----------------------------------------|-----|\n"
+    )
+    out = clean_tables(md)
+    lines = [l for l in out.splitlines() if l.strip()]
+    assert lines == [
+        "| Attention(Q, K, V) = softmax(...)V | (1) |",
+        "| --- | --- |",
+    ]

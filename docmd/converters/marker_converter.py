@@ -8,6 +8,8 @@ based on the file's actual content, via `provider_from_filepath`.
 
 from __future__ import annotations
 
+import importlib.metadata
+import time
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +42,34 @@ def _get_model_dict() -> dict[str, Any]:
 
         _model_dict = create_model_dict()
     return _model_dict
+
+
+_docmd_version_cache: str | None = None
+_marker_version_cache: str | None = None
+
+
+def _docmd_version() -> str:
+    # Read from installed package metadata rather than `from docmd import
+    # __version__` - that would import docmd/__init__.py, which imports
+    # this module transitively (via the converter registry), a circular
+    # import.
+    global _docmd_version_cache
+    if _docmd_version_cache is None:
+        try:
+            _docmd_version_cache = importlib.metadata.version("docmd-cli")
+        except importlib.metadata.PackageNotFoundError:
+            _docmd_version_cache = "unknown"
+    return _docmd_version_cache
+
+
+def _marker_version() -> str:
+    global _marker_version_cache
+    if _marker_version_cache is None:
+        try:
+            _marker_version_cache = importlib.metadata.version("marker-pdf")
+        except importlib.metadata.PackageNotFoundError:
+            _marker_version_cache = "unknown"
+    return _marker_version_cache
 
 
 def _build_config_dict(config: ConvertConfig):
@@ -82,6 +112,7 @@ class MarkerConverter:
         config_parser = _build_config_dict(config)
         config_dict = config_parser.generate_config_dict()
 
+        start = time.monotonic()
         try:
             converter = PdfConverter(
                 config=config_dict,
@@ -102,13 +133,32 @@ class MarkerConverter:
                 f"Marker failed to convert '{filepath}': {exc}", cause=exc
             ) from exc
 
+        duration_ms = int((time.monotonic() - start) * 1000)
         markdown, _, images = text_from_rendered(rendered)
         metadata = dict(getattr(rendered, "metadata", {}) or {})
-        page_count = len(metadata.get("page_stats", [])) or 1
+        page_stats = metadata.get("page_stats", [])
+        page_count = len(page_stats) or 1
+
+        # A page whose text_extraction_method isn't "pdftext" went through
+        # OCR/vision-based recognition rather than reading an embedded text
+        # layer - independent of force_ocr, since Marker also falls back to
+        # this per-page for a PDF with no usable text layer at all.
+        ocr_used = config.force_ocr or any(
+            page.get("text_extraction_method") != "pdftext" for page in page_stats
+        )
+
+        provenance = {
+            "docmd_version": _docmd_version(),
+            "backend": "marker",
+            "backend_version": _marker_version(),
+            "ocr_used": ocr_used,
+            "conversion_duration_ms": duration_ms,
+        }
 
         return ConversionResult(
             markdown=markdown,
             page_count=page_count,
             images=images,
             metadata=metadata,
+            provenance=provenance,
         )
