@@ -18,7 +18,7 @@ from docmd.postprocess.image_handling import apply_image_handling
 from docmd.postprocess.table_cleanup import clean_tables
 
 __all__ = ["convert", "convert_document", "ConvertConfig", "ConversionResult"]
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 def convert_document(

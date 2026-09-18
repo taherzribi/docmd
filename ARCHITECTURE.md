@@ -3,6 +3,31 @@
 ## The pitch (keep this pinned above your desk)
 We are not competing on conversion quality. We are selling **"hit an endpoint, get clean Markdown back"** — no Python env, no 8GB+ RAM, no GPU, no dependency hell. The open-source core proves the engine works and builds trust. The hosted API sells convenience.
 
+## Real dependency gap found by testing (2026-09-18)
+The pitch above says "no dependency hell." That held for text-layer PDFs, DOCX, and
+PPTX when actually tested against real downloaded documents (an arXiv paper, an IMF
+report). It did **not** hold for OCR: Marker's current recognition model (used for
+both scanned-PDF OCR and equation recognition) is a VLM served through either `vllm`
+or llama.cpp's `llama-server` binary - no plain-transformers/CPU fallback exists in
+this version. Neither ships via pip, so `pip install docmd-cli[full]` alone cannot
+actually OCR a scanned document or handle a PDF with equations, despite the README
+previously implying "OCR - bundled by Marker, free" meant it worked out of the box.
+
+Confirmed via a real test: converting a genuinely scanned PDF (downloaded from
+archive.org) raised a missing-binary error on this dev machine (no Homebrew). Fixed
+two ways: (1) a real fix - download a prebuilt `llama-server` binary directly from
+llama.cpp's GitHub releases (no package manager needed) and set `LLAMA_CPP_BINARY`,
+which then produced correct real OCR output; (2) a docmd fix - a dedicated
+`MissingSystemDependencyError` with install instructions instead of a raw stack trace
+when the binary is missing (see `docmd/errors.py`).
+
+**Implications to carry into Stage 2/3 (`api/`)**: the hosted API's Docker image
+does not currently install `llama-server` either - meaning a customer uploading a
+scanned PDF or an equation-heavy document to the live API would hit this same error
+today. This needs a fix in `docmd-api`'s Dockerfile before OCR can be honestly
+advertised as working end-to-end there. Not yet fixed as of this note - flagged here
+so it isn't lost.
+
 ## Positioning risk (checked 2026-09-18)
 Marker's *code* is Apache-2.0 (no restriction). Marker's *model weights* use a modified
 Open RAIL-M license: free for research, personal use, and organizations under $5M in
@@ -128,7 +153,9 @@ Treat this folder as the actual differentiator. A thin wrapper is a weekend proj
 
 - `pip install docmd-cli` -> core PDF conversion (Marker bundles OCR here already; there is
   no separate lean/no-OCR base install, since Marker's own base dependencies include
-  `surya-ocr`)
+  `surya-ocr`) - but actually *running* OCR (or equation recognition) on top of that
+  also needs the `llama-server` native binary, which no `pip install` variant can
+  provide - see "Real dependency gap found by testing" above
 - `pip install docmd-cli[full]` -> adds DOCX/PPTX/EPUB/XLSX support via Marker's `full` extra
 
 ## License clarity

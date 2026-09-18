@@ -35,6 +35,30 @@ class MissingExtraError(DocmdError):
         )
 
 
+class MissingSystemDependencyError(DocmdError):
+    """Raised when Marker's OCR/equation recognition needs a native binary
+    that isn't installed - not a pip package, so `pip install docmd[full]`
+    can't provide it. See ARCHITECTURE.md "OCR and equation recognition need
+    a native binary" for why this exists."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(
+            "OCR/equation recognition needs the `llama-server` binary from "
+            "llama.cpp, which pip cannot install. This only matters for "
+            "scanned PDFs or documents with equations - a normal text-layer "
+            "PDF doesn't hit this path.\n\n"
+            "Install it with:\n"
+            "  macOS:  brew install llama.cpp\n"
+            "  Linux:  brew install llama.cpp, or download a release from\n"
+            "          https://github.com/ggml-org/llama.cpp/releases\n"
+            "No Homebrew? Download the right archive from that releases "
+            "page directly (llama-<version>-bin-macos-arm64.tar.gz etc.), "
+            "then either put `llama-server` on your PATH or set "
+            "LLAMA_CPP_BINARY to its full path.\n\n"
+            f"Underlying error: {detail}"
+        )
+
+
 class EncryptedDocumentError(DocmdError):
     """Raised when the input is a password-protected / encrypted document."""
 

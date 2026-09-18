@@ -13,7 +13,12 @@ from typing import Any
 
 from docmd.config import ConvertConfig
 from docmd.converters.base import ConversionResult
-from docmd.errors import ConversionError, EncryptedDocumentError, MissingExtraError
+from docmd.errors import (
+    ConversionError,
+    EncryptedDocumentError,
+    MissingExtraError,
+    MissingSystemDependencyError,
+)
 
 # Marker loads its models (a few hundred MB to ~1GB of weights, downloaded
 # from Hugging Face on first use) lazily and caches them at module scope, so
@@ -21,6 +26,11 @@ from docmd.errors import ConversionError, EncryptedDocumentError, MissingExtraEr
 _model_dict: dict[str, Any] | None = None
 
 _PASSWORD_HINTS = ("password", "encrypt")
+# Raised as surya.inference.backends.spawn.SpawnError when OCR/equation
+# recognition needs the llama-server binary and it isn't on PATH - matched
+# by message/type name rather than importing surya's internal exception
+# class, so this doesn't break if that module path moves.
+_MISSING_BINARY_HINTS = ("llama-server", "spawnerror")
 
 
 def _get_model_dict() -> dict[str, Any]:
@@ -39,6 +49,18 @@ def _build_config_dict(config: ConvertConfig):
         "output_format": "markdown",
         "force_ocr": config.force_ocr,
         "use_llm": config.use_llm,
+        # Marker's own default (4) spins up a multiprocessing.ProcessPoolExecutor
+        # for page-text extraction on any sufficiently multi-page PDF. On
+        # spawn-based platforms (macOS, Windows) that crashes with
+        # "An attempt has been made to start a new process before the
+        # current process has finished its bootstrapping phase" whenever the
+        # caller isn't wrapped in `if __name__ == "__main__":` - an easy trap
+        # for a library used from a plain script, a notebook, or a web
+        # server's request handler. Marker's own bundled server.py sets this
+        # to 1 for exactly this reason; docmd does the same as a library
+        # default, trading a bit of extraction parallelism for not crashing
+        # on arbitrary callers.
+        "pdftext_workers": 1,
     }
     if config.image_mode == "skip":
         options["disable_image_extraction"] = True
@@ -71,8 +93,11 @@ class MarkerConverter:
             rendered = converter(filepath)
         except Exception as exc:
             message = str(exc).lower()
+            exc_type_name = type(exc).__name__.lower()
             if any(hint in message for hint in _PASSWORD_HINTS):
                 raise EncryptedDocumentError() from exc
+            if any(hint in message or hint in exc_type_name for hint in _MISSING_BINARY_HINTS):
+                raise MissingSystemDependencyError(str(exc)) from exc
             raise ConversionError(
                 f"Marker failed to convert '{filepath}': {exc}", cause=exc
             ) from exc

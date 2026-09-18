@@ -98,3 +98,16 @@ def test_image_handling_alt_text_mode_fills_empty_alt():
     md = "![](img.png)"
     out = apply_image_handling(md, images={}, mode="alt-text")
     assert out == "![Image 1](img.png)"
+
+
+def test_image_handling_drops_fully_empty_image_reference():
+    """Real Marker output on a scanned page: `![]()` with no href at all,
+    directly adjacent to a real image reference with no separator between
+    them - found while OCR-testing a genuinely scanned PDF. The old regex
+    required at least one character inside the parens, so `![]()` never
+    matched and leaked through every mode unprocessed."""
+    md = "![]()![](real.jpeg)"
+
+    assert apply_image_handling(md, images={}, mode="placeholder") == "*[image omitted]*"
+    assert apply_image_handling(md, images={}, mode="skip") == ""
+    assert apply_image_handling(md, images={}, mode="alt-text") == "![Image 1](real.jpeg)"

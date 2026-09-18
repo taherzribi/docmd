@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]*)\)")
 
 
 def apply_image_handling(
@@ -32,6 +32,16 @@ def apply_image_handling(
     def _replace(match: re.Match[str]) -> str:
         nonlocal counter
         alt_text, ref = match.group(1), match.group(2)
+
+        if not ref.strip():
+            # `![]()` with no reference at all - real Marker output on some
+            # scanned pages (an OCR'd region with no recoverable image data).
+            # No mode should keep this: a placeholder/skip has nothing to
+            # describe, and alt-text mode would otherwise emit a link to
+            # nowhere (an empty href renders as a broken image for no
+            # legitimate reason, since there was never a file to begin with).
+            return ""
+
         filename = Path(ref).name
 
         if mode == "skip":

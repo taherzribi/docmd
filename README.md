@@ -40,7 +40,7 @@ core, usable standalone today.
 | Input | Output |
 |---|---|
 | PDF (text-based) | Markdown with preserved headings, lists, tables |
-| PDF (scanned) | Markdown via OCR — bundled by Marker, free |
+| PDF (scanned) | Markdown via OCR — bundled by Marker, free, but needs [one extra native binary](#ocr-and-equations-need-one-native-binary) |
 | DOCX | Markdown with formatting preserved (`pip install docmd-cli[full]`) |
 | PPTX | Markdown, one section per slide (`pip install docmd-cli[full]`) |
 
@@ -88,6 +88,35 @@ sudo apt-get install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libf
 ```
 
 PDF conversion (the base install) does not need this.
+
+## OCR and equations need one native binary
+
+Found by testing docmd against a real scanned document, not documented anywhere
+upstream at the time of writing: Marker's current OCR and equation-recognition model
+is a vision-language model served through either `vllm` (GPU/Linux-oriented) or
+[llama.cpp](https://github.com/ggml-org/llama.cpp)'s `llama-server` binary - there is
+no plain-CPU/transformers fallback. `pip install docmd-cli` cannot provide either one,
+since neither ships as a normal Python wheel.
+
+This only matters for **scanned PDFs** (no embedded text layer) and PDFs with
+**equations** - a normal text-layer PDF never touches this code path, and everything
+else in this README works with just `pip install`.
+
+```bash
+# macOS / Linux with Homebrew
+brew install llama.cpp
+
+# No Homebrew: download a prebuilt binary directly, no package manager needed
+# (pick the archive matching your OS/arch from the releases page)
+curl -LO https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-<version>-bin-macos-arm64.tar.gz
+tar xzf llama-<version>-bin-macos-arm64.tar.gz
+export LLAMA_CPP_BINARY=$PWD/llama-<version>/llama-server
+```
+
+Without it, converting a scanned PDF or one with equations raises a
+`MissingSystemDependencyError` with these same instructions - not a raw stack trace.
+First real OCR run also downloads the model's GGUF weights from Hugging Face
+(a few GB), separate from the PyTorch weights Marker already downloaded.
 
 ## Image handling
 
