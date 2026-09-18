@@ -14,6 +14,10 @@ CI failed on a different platform running the identical, pinned backend version.
 fixes replaced "assert the backend did X" with "assert docmd guarantees Y" - that
 distinction is the entire point of this document.
 
+`tests/test_benchmark.py` runs every guarantee below against the *whole* fixture
+corpus at once - a scorecard, not a percentage score - so a regression in any one
+fixture gets caught even if it isn't the fixture that originally found the bug.
+
 ## What's guaranteed
 
 **Heading hierarchy** (`docmd/postprocess/heading_normalize.py`,
