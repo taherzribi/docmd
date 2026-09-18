@@ -64,7 +64,8 @@ distinction is the entire point of this document.
 **Provenance** (`docmd/converters/base.py:ConversionResult.provenance`)
 - Every `convert_document()` call returns `docmd_version`, `backend`,
   `backend_version`, `ocr_used`, and `conversion_duration_ms` - same shape regardless
-  of which backend ran.
+  of which backend ran. This records *what ran*, not that the *output* is
+  reproducible - see OCR determinism below, where it isn't.
 
 ## What's explicitly not guaranteed (yet)
 
@@ -79,6 +80,25 @@ Found by real-world testing, not fixed:
   work correctly on a two-column academic paper; proven to fail on a patent's
   front-page citation block. No known rule yet for which case a given document falls
   into.
+- **OCR reproducibility.** Running the identical file through the identical code path
+  twice, in the same process, produced different text - confirmed directly, not
+  inferred (28,916 vs 27,973 characters on a real degraded scan; individual word
+  choices and even a poem's line-break structure differed between the two runs).
+  Root cause investigated and is architectural, not a misconfiguration: OCR/equation
+  recognition already requests greedy decoding (`temperature=0.0`, confirmed in
+  `surya/inference/backends/openai_client.py`), but `llama-server` runs with
+  `--parallel 8` by default (`surya/inference/backends/llamacpp.py`), and
+  floating-point matrix multiplication under concurrent batched inference is not
+  strictly order-independent - a well-documented property of essentially every
+  production LLM-serving stack (vLLM, llama.cpp, TensorRT-LLM), not specific to this
+  one. A small numerical difference from batch composition can flip an argmax choice
+  at a near-tied token, and the autoregressive generation diverges from there.
+  `SURYA_INFERENCE_PARALLEL=1` (env var, not currently exposed through docmd's own
+  config) would remove the batching-composition variable and likely reduce this a
+  lot, at a real throughput cost - untested, and even then, multi-threaded CPU matrix
+  math without an explicit `--threads 1` could still leave some residual variance.
+  Does not affect the plain `pdftext` text-extraction path (no VLM inference
+  involved) - only pages that actually go through OCR or equation recognition.
 
 ## Writing a new test against this contract
 

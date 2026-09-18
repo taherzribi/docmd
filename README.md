@@ -118,6 +118,13 @@ Without it, converting a scanned PDF or one with equations raises a
 First real OCR run also downloads the model's GGUF weights from Hugging Face
 (a few GB), separate from the PyTorch weights Marker already downloaded.
 
+**OCR output is not guaranteed reproducible run to run** - confirmed directly:
+the same scanned file through the same code path twice produced different text.
+This is architectural (concurrent batched inference under the hood), not a docmd
+bug and not fixable by a config flag alone - see [CONTRACT.md](CONTRACT.md) for the
+full investigation. Doesn't affect plain text-layer PDFs, only pages that actually
+go through OCR or equation recognition.
+
 ## Image handling
 
 Images default to a text placeholder (`*[... omitted]*`) - no binary data, nothing to
