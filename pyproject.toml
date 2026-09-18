@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "docmd-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Convert PDFs, DOCX, and PPTX to clean, structure-preserving Markdown."
 readme = "README.md"
 license = { text = "MIT" }

@@ -80,11 +80,45 @@ native Pango/GObject/Cairo libraries, which `pip` cannot install for you:
 # macOS
 brew install pango
 
-# Debian/Ubuntu
+# Debian/Ubuntu (24.04 and older)
 sudo apt-get install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+
+# Debian trixie (13) and newer: libgdk-pixbuf2.0-0 was renamed
+sudo apt-get install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info
 ```
 
 PDF conversion (the base install) does not need this.
+
+## Image handling
+
+Images default to a text placeholder (`*[... omitted]*`) - no binary data, nothing to
+resolve, safe for RAG chunking:
+
+```python
+markdown = convert("report.pdf")  # image_mode="placeholder" by default
+```
+
+To keep real image links instead, use `image_mode="alt-text"` and pass `output_dir` so
+the image files actually get saved somewhere the links can resolve to:
+
+```python
+from docmd import convert_document
+from docmd.config import ConvertConfig
+
+result = convert_document(
+    "report.pdf",
+    config=ConvertConfig(image_mode="alt-text"),
+    output_dir="output/",
+)
+```
+
+From the CLI, `--image-dir` defaults to the output file's directory when `-o` is given:
+
+```bash
+docmd convert report.pdf -o output/report.md --image-mode alt-text
+```
+
+`image_mode="skip"` drops images entirely - no placeholder, no files.
 
 ## How it works
 

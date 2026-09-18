@@ -47,12 +47,39 @@ def main() -> None:
     show_default=True,
     help="How to represent images in the output.",
 )
-def convert(file: Path, output: Path | None, force_ocr: bool, use_llm: bool, image_mode: str) -> None:
+@click.option(
+    "--image-dir",
+    "image_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Where to save image files in --image-mode alt-text. Defaults to "
+    "the output file's directory when -o is given; without -o, images "
+    "won't be saved unless this is set explicitly.",
+)
+def convert(
+    file: Path,
+    output: Path | None,
+    force_ocr: bool,
+    use_llm: bool,
+    image_mode: str,
+    image_dir: Path | None,
+) -> None:
     """Convert FILE to Markdown."""
     config = ConvertConfig(force_ocr=force_ocr, use_llm=use_llm, image_mode=image_mode)
 
+    if image_mode == "alt-text" and image_dir is None:
+        if output is not None:
+            image_dir = output.parent
+        else:
+            click.echo(
+                "warning: --image-mode alt-text with no -o/--image-dir - "
+                "image links in the output won't resolve to real files. "
+                "Pass --image-dir to save images somewhere.",
+                err=True,
+            )
+
     try:
-        result = convert_document(str(file), config=config)
+        result = convert_document(str(file), config=config, output_dir=image_dir)
     except DocmdError as exc:
         click.echo(f"error: {exc}", err=True)
         sys.exit(1)
