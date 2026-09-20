@@ -42,9 +42,20 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   equation came back as a one-row table with two separator rows.
 - A table split into two blocks by a page break, with a repeated identical header, is
   merged into one continuous table.
+- A run of 4+ dot-leader characters (`....` or `. . . .`, the visual filler between a
+  label and its value in dot-leader-style tables with no gridlines) is stripped from
+  cell text - found via a real Berkshire Hathaway shareholder letter's performance
+  table. A standard 3-dot prose ellipsis is never touched.
 - **Not guaranteed**: correct table content when the backend's own reading order is
   wrong. docmd normalizes structure; it doesn't re-derive reading order the backend
   got wrong (confirmed real gap: a patent's front-page bibliographic table).
+
+**CSV table export** (`docmd/tables.py`, `docmd extract file --tables csv`)
+- Operates on the already-cleaned Markdown (after `clean_tables` has run), so every
+  table it exports is already structurally consistent.
+- Markdown's backslash-escaping of punctuation (e.g. `\$`, `\*`) is undone - correct
+  in Markdown, meaningless once re-purposed as CSV. Found via the same Berkshire
+  Hathaway letter: a segment-earnings table's dollar figures rendered as `\$ 5,428`.
 
 **Image references** (`docmd/postprocess/image_handling.py`)
 - No malformed Markdown image syntax (`![]()`  with an empty or partial reference)

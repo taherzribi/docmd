@@ -20,11 +20,21 @@ import re
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _SEP_CELL_RE = re.compile(r"^:?-+:?$")
 _PAGE_SEPARATOR = "-" * 48
+# A run of 4+ dot-leaders ("....." or ". . . . ."), the visual filler between
+# a label and its value in dot-leader-style tables (found in a real
+# Berkshire Hathaway shareholder letter's performance table, e.g.
+# "1965 ........................" as a cell's raw text) - never real content.
+# 4+ (not 3+) so a standard prose ellipsis "..." is never touched.
+_LEADER_DOTS_RE = re.compile(r"(?:\.\s?){4,}")
 
 
 def _is_row(line: str) -> bool:
     stripped = line.strip()
     return bool(stripped) and "|" in stripped
+
+
+def _strip_leader_dots(cell: str) -> str:
+    return _LEADER_DOTS_RE.sub("", cell).strip()
 
 
 def _split_cells(line: str) -> list[str]:
@@ -46,8 +56,10 @@ def _render_row(cells: list[str]) -> str:
 
 
 def _normalize_block(header: list[str], data_rows: list[list[str]]) -> list[str]:
-    """Pad/truncate every row to the header's column count and re-render
-    with a clean separator row."""
+    """Pad/truncate every row to the header's column count, strip dot-leader
+    filler from every cell, and re-render with a clean separator row."""
+    header = [_strip_leader_dots(c) for c in header]
+    data_rows = [[_strip_leader_dots(c) for c in row] for row in data_rows]
     col_count = len(header)
     out = [_render_row(header), _render_row(["---"] * col_count)]
     for row in data_rows:

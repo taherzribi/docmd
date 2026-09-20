@@ -12,6 +12,7 @@ import click
 from docmd import convert_document
 from docmd.config import ConvertConfig
 from docmd.errors import DocmdError
+from docmd.tables import extract_tables_as_csv
 
 
 @click.group()
@@ -130,6 +131,43 @@ def convert(
         click.echo(f"wrote {output} ({result.page_count} page(s))", err=True)
     else:
         click.echo(content)
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--tables",
+    "extract_tables",
+    type=click.Choice(["csv"]),
+    required=True,
+    help="What to extract - currently only 'csv' (one file per table found).",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    required=True,
+    help="Directory to write extracted files into (created if it doesn't exist).",
+)
+def extract(file: Path, extract_tables: str, output_dir: Path) -> None:
+    """Extract structured data (tables) from FILE, independent of the
+    Markdown output - each table becomes its own file."""
+    try:
+        result = convert_document(str(file))
+    except DocmdError as exc:
+        click.echo(f"error: {exc}", err=True)
+        sys.exit(1)
+
+    tables = extract_tables_as_csv(result.markdown)
+    if not tables:
+        click.echo("no tables found", err=True)
+        return
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for index, csv_content in enumerate(tables, start=1):
+        (output_dir / f"table_{index}.csv").write_text(csv_content, encoding="utf-8")
+    click.echo(f"wrote {len(tables)} table(s) to {output_dir}", err=True)
 
 
 if __name__ == "__main__":

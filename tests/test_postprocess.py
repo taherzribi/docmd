@@ -192,3 +192,27 @@ def test_fix_rtl_brackets_leaves_normal_markdown_links_alone():
     md = "See [the docs](https://example.com/docs) for more, and [1](#fn1)[2](#fn2) too."
     assert fix_rtl_brackets(md) == md
 
+
+def test_clean_tables_strips_dot_leader_filler_from_cells():
+    """Real Marker output found converting a real Berkshire Hathaway
+    shareholder letter: a dot-leader-style table (a year label, then a long
+    run of dots for visual alignment, then the value - no gridlines in the
+    source PDF) came out with the literal dot-leader characters inside the
+    cell's text, e.g. '1965 ........................'."""
+    md = (
+        "| Year | Change |\n"
+        "| --- | --- |\n"
+        "| 1965 ........................................................ | 49.5 |\n"
+    )
+    out = clean_tables(md)
+    assert "1965 ...." not in out
+    assert "| 1965 | 49.5 |" in out
+
+
+def test_clean_tables_does_not_strip_a_normal_ellipsis():
+    """Only 4+ consecutive dot-leaders are stripped - a standard 3-dot
+    prose ellipsis is real content, not visual filler."""
+    md = "| Note | Detail |\n| --- | --- |\n| See more... | ok |\n"
+    out = clean_tables(md)
+    assert "See more..." in out
+

@@ -212,6 +212,20 @@ Tables, images, and lists are never merged into surrounding text, and merging
 never crosses a page or section boundary. From the CLI:
 `docmd convert report.pdf --format rag --chunk-max-tokens 400 -o chunks.json`.
 
+## Extracting tables as CSV
+
+Independent of the Markdown output, pull every table out of a document as its
+own CSV file:
+
+```
+docmd extract report.pdf --tables csv -o tables/
+# wrote 3 table(s) to tables/  (table_1.csv, table_2.csv, table_3.csv)
+```
+
+Markdown's backslash-escaping (e.g. `\$ 5,428`, so a dollar figure isn't read
+as a math delimiter) is undone in the CSV output - that escaping is correct
+in Markdown but meaningless once re-purposed as CSV.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a

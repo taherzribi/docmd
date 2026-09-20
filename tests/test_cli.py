@@ -69,3 +69,25 @@ def test_cli_chunk_max_tokens_merges_chunks(tmp_path):
     # Unmerged, this fixture produces 9 chunks (see test_chunks.py); merged
     # up to 1000 tokens, each section's heading absorbs its own paragraph.
     assert len(chunks) < 9
+
+
+def test_cli_extract_tables_writes_one_csv_per_table(tmp_path):
+    out_dir = tmp_path / "tables"
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["extract", str(FIXTURES / "stress.pdf"), "--tables", "csv", "-o", str(out_dir)]
+    )
+
+    assert result.exit_code == 0, result.output
+    csv_files = sorted(out_dir.glob("*.csv"))
+    assert len(csv_files) >= 1
+    assert csv_files[0].read_text().splitlines()[0]  # a real header row, not empty
+
+
+def test_cli_extract_no_tables_does_not_error(tmp_path):
+    out_dir = tmp_path / "tables"
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["extract", str(FIXTURES / "with_image.pdf"), "--tables", "csv", "-o", str(out_dir)]
+    )
+    assert result.exit_code == 0, result.output
