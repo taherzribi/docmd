@@ -148,7 +148,7 @@ headings by font size where the PDF reports a real one. After: the arXiv paper's
 outline and the RFC's, down to `6.5.3`, come out exactly right. Where a PDF reports a
 font size of 1.0 for everything (this RFC, a court opinion, a financial letter) there
 is no signal, and unnumbered headings still get Marker's noisy levels - documented in
-[CONTRACT.md](CONTRACT.md), not hidden. Commits `0cc9513` and the one after `8fdb31d`.
+[CONTRACT.md](CONTRACT.md), not hidden. Commits `0cc9513` and `a894685`.
 
 ### Search ranked a repetitive chunk above the one that defines the term
 
