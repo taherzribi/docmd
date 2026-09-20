@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -99,3 +100,74 @@ def test_cli_validate_clean_document_exits_zero():
     assert result.exit_code == 0, result.output
     assert "heading" in result.output
     assert "table" in result.output
+
+
+def test_cli_batch_converts_every_file_and_mirrors_structure(tmp_path):
+    input_dir = tmp_path / "input"
+    subdir = input_dir / "sub"
+    subdir.mkdir(parents=True)
+    shutil.copy(FIXTURES / "sample.pdf", input_dir / "sample.pdf")
+    shutil.copy(FIXTURES / "stress.pdf", subdir / "stress.pdf")
+    out_dir = tmp_path / "output"
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert (out_dir / "sample.md").exists()
+    assert (out_dir / "sub" / "stress.md").exists()
+    assert "Q3 Regional Sales Report" in (out_dir / "sample.md").read_text()
+    assert "2 succeeded, 0 failed, 0 skipped" in result.output
+
+
+def test_cli_batch_skips_already_converted_files_on_rerun(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    shutil.copy(FIXTURES / "sample.pdf", input_dir / "sample.pdf")
+    out_dir = tmp_path / "output"
+
+    runner = CliRunner()
+    runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+    result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert "0 succeeded, 0 failed, 1 skipped" in result.output
+
+
+def test_cli_batch_overwrite_reconverts_existing_files(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    shutil.copy(FIXTURES / "sample.pdf", input_dir / "sample.pdf")
+    out_dir = tmp_path / "output"
+
+    runner = CliRunner()
+    runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+    result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir), "--overwrite"])
+
+    assert result.exit_code == 0, result.output
+    assert "1 succeeded, 0 failed, 0 skipped" in result.output
+
+
+def test_cli_batch_one_bad_file_does_not_block_the_others(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    shutil.copy(FIXTURES / "sample.pdf", input_dir / "sample.pdf")
+    (input_dir / "broken.pdf").write_text("not a real pdf")
+    out_dir = tmp_path / "output"
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+
+    assert result.exit_code != 0  # non-zero because one file failed
+    assert (out_dir / "sample.md").exists()  # the good file still converted
+    assert "1 succeeded, 1 failed, 0 skipped" in result.output
+
+
+def test_cli_batch_empty_directory_does_not_error(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    out_dir = tmp_path / "output"
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
+    assert result.exit_code == 0, result.output

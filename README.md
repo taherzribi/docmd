@@ -244,6 +244,28 @@ with. Exits non-zero if anything is flagged (`⚠`), so it's usable as a CI
 gate on your own document pipeline. The checks are the same ones that guard
 docmd's own contract - see `CONTRACT.md` and `docmd/validate.py`.
 
+## Converting a whole directory
+
+```
+docmd batch ./documents -o ./converted
+[1/247] converting: reports/q3.pdf
+[2/247] skip (already converted): reports/q2.pdf
+...
+241 succeeded, 2 failed, 4 skipped (of 247 total)
+```
+
+Mirrors `INPUT_DIR`'s structure into the output directory. A file whose
+output already exists is skipped, not redone - so an interrupted batch
+resumes cleanly by re-running the exact same command (`--overwrite` forces
+reconversion). One bad file doesn't stop the rest: failures are collected
+and reported at the end, with the command exiting non-zero if any occurred.
+Takes the same `--force-ocr`, `--image-mode`, `--format`, and
+`--chunk-max-tokens` options as `docmd convert`.
+
+Runs sequentially, not in parallel - Marker's models are loaded once and
+reused across files in-process; concurrent conversions against that shared
+state haven't been verified safe, so this doesn't guess past that.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a
