@@ -47,6 +47,16 @@ class ConvertConfig:
             backend's raw block tree that most callers don't need, and only
             Marker (not a future backend without equivalent structure) is
             guaranteed to support it.
+        chunk_max_tokens: Merge adjacent text/heading chunks (same page, same
+            section) up to roughly this many tokens, instead of returning one
+            chunk per raw block - raw blocks are often too small for good
+            embeddings (a bare heading, a one-sentence paragraph). Token
+            count is a cheap character-based estimate (~4 chars/token), not a
+            real tokenizer - exact counts vary by embedding model anyway.
+            Tables, images, and lists are never merged into surrounding text;
+            merging never crosses a page or section boundary. None (default)
+            leaves chunks at raw block granularity. Ignored unless
+            `include_chunks` is also set.
     """
 
     use_llm: bool = False
@@ -56,6 +66,7 @@ class ConvertConfig:
     fix_rtl_brackets: bool = True
     image_mode: str = "placeholder"
     include_chunks: bool = False
+    chunk_max_tokens: int | None = None
 
     def __post_init__(self) -> None:
         if self.image_mode not in _VALID_IMAGE_MODES:
@@ -63,3 +74,5 @@ class ConvertConfig:
                 f"image_mode must be one of {sorted(_VALID_IMAGE_MODES)}, "
                 f"got {self.image_mode!r}"
             )
+        if self.chunk_max_tokens is not None and self.chunk_max_tokens <= 0:
+            raise ValueError(f"chunk_max_tokens must be positive, got {self.chunk_max_tokens!r}")

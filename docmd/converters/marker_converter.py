@@ -16,6 +16,7 @@ from typing import Any
 from docmd.config import ConvertConfig
 from docmd.converters.base import ConversionResult
 from docmd.converters.chunk_extraction import extract_chunks
+from docmd.converters.chunk_merge import merge_chunks
 from docmd.errors import (
     ConversionError,
     EncryptedDocumentError,
@@ -169,6 +170,8 @@ class MarkerConverter:
         }
 
         chunks = extract_chunks(document) if document is not None else None
+        if chunks is not None and config.chunk_max_tokens is not None:
+            chunks = merge_chunks(chunks, config.chunk_max_tokens)
 
         return ConversionResult(
             markdown=markdown,

@@ -72,6 +72,17 @@ def main() -> None:
         "instead of Markdown - see ConvertConfig.include_chunks."
     ),
 )
+@click.option(
+    "--chunk-max-tokens",
+    "chunk_max_tokens",
+    type=int,
+    default=None,
+    help=(
+        "With --format rag, merge adjacent text/heading chunks up to roughly "
+        "this many tokens instead of one chunk per raw block - see "
+        "ConvertConfig.chunk_max_tokens. Ignored with --format markdown."
+    ),
+)
 def convert(
     file: Path,
     output: Path | None,
@@ -80,6 +91,7 @@ def convert(
     image_mode: str,
     image_dir: Path | None,
     output_format: str,
+    chunk_max_tokens: int | None,
 ) -> None:
     """Convert FILE to Markdown."""
     config = ConvertConfig(
@@ -87,6 +99,7 @@ def convert(
         use_llm=use_llm,
         image_mode=image_mode,
         include_chunks=(output_format == "rag"),
+        chunk_max_tokens=chunk_max_tokens,
     )
 
     if image_mode == "alt-text" and image_dir is None:

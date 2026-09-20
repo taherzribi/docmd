@@ -86,6 +86,31 @@ def test_image_block_produces_a_chunk_with_empty_text():
     assert image_chunks[0].bbox != (0.0, 0.0, 0.0, 0.0)
 
 
+def test_chunk_max_tokens_merges_heading_into_its_following_paragraph():
+    """Real-document check that ConvertConfig.chunk_max_tokens actually
+    reaches the merge pass - unit coverage of the merge logic itself lives
+    in test_chunk_merge.py."""
+    result = convert_document(
+        str(FIXTURES / "running_header.pdf"),
+        config=ConvertConfig(include_chunks=True, chunk_max_tokens=1000),
+    )
+    section1 = [c for c in result.chunks if c.section.endswith("Section 1: Findings")]
+    assert len(section1) == 1
+    assert "Section 1: Findings" in section1[0].text
+    assert "body paragraph content" in section1[0].text
+
+
+def test_chunk_max_tokens_still_keeps_tables_atomic():
+    result = convert_document(
+        str(FIXTURES / "stress.pdf"),
+        config=ConvertConfig(include_chunks=True, chunk_max_tokens=100_000),
+    )
+    table_chunks = [c for c in result.chunks if c.content_type == "table"]
+    assert len(table_chunks) >= 1
+    for chunk in table_chunks:
+        assert chunk.content_type == "table"
+
+
 def test_all_content_types_are_in_the_stable_vocabulary():
     for fixture in ["sample.pdf", "stress.pdf", "running_header.pdf", "with_image.pdf", "merged_cells.pdf"]:
         result = convert_document(str(FIXTURES / fixture), config=ConvertConfig(include_chunks=True))

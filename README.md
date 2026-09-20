@@ -190,15 +190,27 @@ for chunk in result.chunks:
 Or from the CLI: `docmd convert report.pdf --format rag -o chunks.json`.
 
 One chunk per structural block the backend identified (a paragraph, a table, a
-heading, an image, ...) - not a token-budgeted or semantically merged chunk.
-`content_type` is one of a small, stable set (`text`, `heading`, `table`,
-`image`, `list`), independent of Marker's own internal block-type names.
-`section` is a breadcrumb of the nearest heading at each level above the chunk
-(e.g. `"Chapter 3 > 3.1 Introduction"`). Chunk text is the block's own raw
-text, extracted before docmd's Markdown post-processing runs - a table
-chunk's text is the backend's flattened cell text, not a cleaned Markdown
-table. `chunks` is `None` unless `include_chunks=True` - the default
-`convert_document()` call is unaffected.
+heading, an image, ...) by default. `content_type` is one of a small, stable
+set (`text`, `heading`, `table`, `image`, `list`), independent of Marker's own
+internal block-type names. `section` is a breadcrumb of the nearest heading at
+each level above the chunk (e.g. `"Chapter 3 > 3.1 Introduction"`). Chunk text
+is the block's own raw text, extracted before docmd's Markdown post-processing
+runs - a table chunk's text is the backend's flattened cell text, not a
+cleaned Markdown table. `chunks` is `None` unless `include_chunks=True` - the
+default `convert_document()` call is unaffected.
+
+Raw blocks are often too small (a bare heading, a one-sentence paragraph) or
+too large (a big table) for good embeddings. Set `chunk_max_tokens` to merge
+adjacent text/heading chunks - same page, same section - up to roughly that
+many tokens (a cheap ~4-chars/token estimate, not a real tokenizer):
+
+```python
+config = ConvertConfig(include_chunks=True, chunk_max_tokens=400)
+```
+
+Tables, images, and lists are never merged into surrounding text, and merging
+never crosses a page or section boundary. From the CLI:
+`docmd convert report.pdf --format rag --chunk-max-tokens 400 -o chunks.json`.
 
 ## How it works
 

@@ -45,3 +45,27 @@ def test_cli_convert_format_rag_writes_chunk_json(tmp_path):
     assert isinstance(chunks, list)
     assert any(c["text"] == "Q3 Regional Sales Report" for c in chunks)
     assert all({"text", "page", "section", "content_type", "bbox"} <= c.keys() for c in chunks)
+
+
+def test_cli_chunk_max_tokens_merges_chunks(tmp_path):
+    out_file = tmp_path / "out.json"
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "convert",
+            str(FIXTURES / "running_header.pdf"),
+            "--format",
+            "rag",
+            "--chunk-max-tokens",
+            "1000",
+            "-o",
+            str(out_file),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    chunks = json.loads(out_file.read_text())
+    # Unmerged, this fixture produces 9 chunks (see test_chunks.py); merged
+    # up to 1000 tokens, each section's heading absorbs its own paragraph.
+    assert len(chunks) < 9

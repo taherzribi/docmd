@@ -72,6 +72,16 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   operate on the final rendered Markdown string, not individual blocks.
 - `chunks` is `None` (not an empty list) unless `include_chunks=True` was passed.
 
+**Chunk merging** (`docmd/converters/chunk_merge.py`, opt-in via
+`ConvertConfig.chunk_max_tokens`)
+- A `table`, `image`, or `list` chunk is never merged into surrounding text, and
+  merging never crosses a page or section boundary - checked directly, not just
+  implied by the token budget.
+- A single chunk already at or over the token budget is emitted on its own rather
+  than split - this does not attempt to break up an oversized block.
+- Token count is a `len(text) // 4` estimate, not a real tokenizer - don't build
+  exact-token-count behavior on top of it.
+
 **Errors** (`docmd/errors.py`)
 - A small, fixed set of `DocmdError` subclasses for known failure categories:
   `UnsupportedFormatError`, `MissingExtraError`, `MissingSystemDependencyError`,

@@ -183,3 +183,23 @@ class TestRAGChunks:
     def test_chunks_none_without_include_chunks(self, converted):
         for name, result in converted.items():
             assert result.chunks is None, f"{name}: chunks populated without include_chunks=True"
+
+
+class TestChunkMerging:
+    """See CONTRACT.md: "Chunk merging"."""
+
+    def test_tables_and_images_survive_a_huge_token_budget_unchanged(self):
+        """A merge pass generous enough to absorb the entire rest of the
+        document (100k tokens) still must not touch table/image chunks -
+        proves the exclusion isn't just "rarely triggered by a normal
+        budget", by removing the budget as a variable entirely."""
+        unmerged_config = ConvertConfig(include_chunks=True)
+        merged_config = ConvertConfig(include_chunks=True, chunk_max_tokens=100_000)
+        for name in ["stress.pdf", "with_image.pdf", "merged_cells.pdf"]:
+            unmerged = convert_document(str(FIXTURES / name), config=unmerged_config)
+            merged = convert_document(str(FIXTURES / name), config=merged_config)
+            unmerged_non_text = [c for c in unmerged.chunks if c.content_type in {"table", "image", "list"}]
+            merged_non_text = [c for c in merged.chunks if c.content_type in {"table", "image", "list"}]
+            assert [c.text for c in unmerged_non_text] == [c.text for c in merged_non_text], (
+                f"{name}: table/image/list chunk text changed after merging"
+            )
