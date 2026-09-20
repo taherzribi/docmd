@@ -108,3 +108,18 @@ def test_ignores_bare_number_with_no_embedded_dot():
     body_chunk = next(c for c in chunks if c.content_type == "text")
     # Falls back to the skip-clamp (level 4 -> 2), not the numbering override.
     assert body_chunk.section == "Report > 2024 Outlook"
+
+
+def test_multiline_heading_is_collapsed_to_one_line_in_the_breadcrumb():
+    """Found in a real SCOTUS opinion: a case-caption heading wrapped over
+    two lines in the PDF put a raw newline inside every later chunk's
+    section string."""
+    chunks = _build(
+        [
+            _heading("GOLDEY, ASSOCIATE WARDEN, et al. v. FIELDS \net al.", level=1),
+            _text("body text"),
+        ]
+    )
+    body_chunk = next(c for c in chunks if c.content_type == "text")
+    assert body_chunk.section == "GOLDEY, ASSOCIATE WARDEN, et al. v. FIELDS et al."
+    assert "\n" not in body_chunk.section

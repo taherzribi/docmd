@@ -93,7 +93,10 @@ def extract_chunks(document: Any) -> list[Chunk]:
                 for level in [lvl for lvl in heading_stack if lvl >= heading_level]:
                     del heading_stack[level]
                 if text:
-                    heading_stack[heading_level] = text
+                    # A heading wrapped across lines in the PDF ("GOLDEY, ...
+                    # v. FIELDS \net al.") keeps its raw line breaks in the
+                    # block's text - collapsed so the breadcrumb is one line.
+                    heading_stack[heading_level] = " ".join(text.split())
                 last_level = heading_level
 
             if not text and block_type_name not in _IMAGE_BLOCK_TYPES:
