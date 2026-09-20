@@ -13,6 +13,7 @@ from docmd import convert_document
 from docmd.config import ConvertConfig
 from docmd.errors import DocmdError
 from docmd.tables import extract_tables_as_csv
+from docmd.validate import validate_markdown
 
 
 @click.group()
@@ -168,6 +169,26 @@ def extract(file: Path, extract_tables: str, output_dir: Path) -> None:
     for index, csv_content in enumerate(tables, start=1):
         (output_dir / f"table_{index}.csv").write_text(csv_content, encoding="utf-8")
     click.echo(f"wrote {len(tables)} table(s) to {output_dir}", err=True)
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def validate(file: Path) -> None:
+    """Convert FILE and report structural findings about the result -
+    concrete facts (heading skips, inconsistent tables, ...), never an
+    invented quality percentage docmd has no ground truth to back up."""
+    try:
+        result = convert_document(str(file))
+    except DocmdError as exc:
+        click.echo(f"error: {exc}", err=True)
+        sys.exit(1)
+
+    report = validate_markdown(result.markdown)
+    for finding in report.findings:
+        click.echo(f"{'✓' if finding.ok else '⚠'} {finding.message}")
+
+    if report.has_warnings:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -91,3 +91,11 @@ def test_cli_extract_no_tables_does_not_error(tmp_path):
         main, ["extract", str(FIXTURES / "with_image.pdf"), "--tables", "csv", "-o", str(out_dir)]
     )
     assert result.exit_code == 0, result.output
+
+
+def test_cli_validate_clean_document_exits_zero():
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(FIXTURES / "stress.pdf")])
+    assert result.exit_code == 0, result.output
+    assert "heading" in result.output
+    assert "table" in result.output

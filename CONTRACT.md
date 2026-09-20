@@ -57,6 +57,14 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   in Markdown, meaningless once re-purposed as CSV. Found via the same Berkshire
   Hathaway letter: a segment-earnings table's dollar figures rendered as `\$ 5,428`.
 
+**Validation** (`docmd/validate.py`, `docmd validate file`)
+- Every finding is a concrete, verifiable structural fact - never a numeric quality
+  score, since docmd has no ground truth to compute one honestly against.
+- Runs the identical checks `tests/test_benchmark.py` runs against the whole fixture
+  corpus (same functions, imported not duplicated) - if a document a user converts
+  triggers a warning, that's either a genuine new gap or the same class of thing
+  CONTRACT.md's own history was built from finding.
+
 **Image references** (`docmd/postprocess/image_handling.py`)
 - No malformed Markdown image syntax (`![]()`  with an empty or partial reference)
   ever appears in output, in any mode.

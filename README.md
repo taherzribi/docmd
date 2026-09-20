@@ -226,6 +226,20 @@ Markdown's backslash-escaping (e.g. `\$ 5,428`, so a dollar figure isn't read
 as a math delimiter) is undone in the CSV output - that escaping is correct
 in Markdown but meaningless once re-purposed as CSV.
 
+## Validating the output
+
+```
+docmd validate report.pdf
+✓ 12 heading(s) detected, no level skips
+✓ 3 table(s), all consistent column counts
+```
+
+Reports concrete, verifiable findings about the converted document - never an
+invented quality percentage, since docmd has no ground truth to back one up
+with. Exits non-zero if anything is flagged (`⚠`), so it's usable as a CI
+gate on your own document pipeline. The checks are the same ones that guard
+docmd's own contract - see `CONTRACT.md` and `docmd/validate.py`.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a

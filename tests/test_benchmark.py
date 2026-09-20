@@ -28,6 +28,7 @@ import pytest
 from docmd import convert_document
 from docmd.config import ConvertConfig
 from docmd.converters.base import CONTENT_TYPES
+from docmd.validate import _heading_levels, _is_separator_row, _table_blocks
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -59,29 +60,6 @@ def converted():
 def converted_with_chunks():
     config = ConvertConfig(include_chunks=True)
     return {name: convert_document(str(FIXTURES / name), config=config) for name in ALL_FIXTURES}
-
-
-def _heading_levels(markdown: str) -> list[int]:
-    return [len(m.group(1)) for m in re.finditer(r"^(#+)\s", markdown, re.MULTILINE)]
-
-
-def _table_blocks(markdown: str) -> list[list[str]]:
-    """Groups consecutive `|`-prefixed lines into separate table blocks."""
-    blocks: list[list[str]] = []
-    current: list[str] = []
-    for line in markdown.splitlines():
-        if line.strip().startswith("|"):
-            current.append(line)
-        elif current:
-            blocks.append(current)
-            current = []
-    if current:
-        blocks.append(current)
-    return blocks
-
-
-def _is_separator_row(line: str) -> bool:
-    return bool(re.fullmatch(r"\|[\s:|-]+\|", line.strip()))
 
 
 class TestHeadingHierarchy:
@@ -203,3 +181,18 @@ class TestChunkMerging:
             assert [c.text for c in unmerged_non_text] == [c.text for c in merged_non_text], (
                 f"{name}: table/image/list chunk text changed after merging"
             )
+
+
+class TestValidate:
+    """docmd validate reuses these exact checks - see docmd/validate.py.
+    Nothing in the fixture corpus should ever raise a warning; if it does,
+    either a real regression was introduced, or the fixture legitimately
+    needs updating (and this test's expectation with it)."""
+
+    def test_no_fixture_produces_a_validation_warning(self, converted):
+        from docmd.validate import validate_markdown
+
+        for name, result in converted.items():
+            report = validate_markdown(result.markdown)
+            warnings = [f.message for f in report.findings if not f.ok]
+            assert not warnings, f"{name}: unexpected validation warning(s): {warnings}"
