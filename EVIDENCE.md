@@ -129,6 +129,35 @@ the regex required at least one character inside the parens.
 **Fix:** widened the match to allow a fully empty reference. Commit
 `7abd954`.
 
+### Wrong heading depth, in Markdown and in RAG breadcrumbs
+
+**Found on:** RFC 9113, "Attention Is All You Need", and a 961-page real book, by
+stress-testing chunks and search against nine real documents.
+
+Marker infers heading depth from visual layout, and it is noisy. It gave
+`5.4 Error Handling` the same level as the deeper `5.3.1`/`5.3.2` before it; gave
+`1 Introduction` and `6 Results` different levels; let `3.1 Encoder...` evict its own
+parent `3 Model Architecture` from the breadcrumb; and, in the book, gave four
+different levels to chapter headings that are all one 14pt style, nesting "CHAPTER IV"
+under "CHAPTER III". The existing skip-clamp couldn't catch any of it - none of these
+are level skips, just wrong levels.
+
+**Fix:** section numbers are used as relative structure (`docmd/heading_numbering.py`,
+shared by the Markdown pass and chunk breadcrumbs), and chunk breadcrumbs rank
+headings by font size where the PDF reports a real one. After: the arXiv paper's
+outline and the RFC's, down to `6.5.3`, come out exactly right. Where a PDF reports a
+font size of 1.0 for everything (this RFC, a court opinion, a financial letter) there
+is no signal, and unnumbered headings still get Marker's noisy levels - documented in
+[CONTRACT.md](CONTRACT.md), not hidden. Commits `0cc9513` and the one after `8fdb31d`.
+
+### Search ranked a repetitive chunk above the one that defines the term
+
+**Found on:** a real arXiv paper, querying "self-attention".
+
+Ranking by raw word counts put a long bullet repeating "attention" ahead of the short
+chunk that defines self-attention. **Fix:** BM25 (rare-term weighting, saturation, length
+normalization). Commit `8fdb31d`.
+
 ## Claims verified, not just assumed
 
 - **Multi-column reading order.** A prior finding suggested this could fail

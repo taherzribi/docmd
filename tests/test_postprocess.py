@@ -72,6 +72,30 @@ def test_heading_normalize_numbering_override_sees_past_html_and_markdown_wrappi
     assert '## <span id="b"></span>**[5.4. Error Handling](#b)**' in out
 
 
+def test_heading_normalize_keeps_a_dotted_child_below_its_bare_number_parent():
+    """Real arXiv paper: "3 Model Architecture" and its child "3.1 ..." came
+    out at the same level, and "6 Results" at a different level from "1
+    Introduction". Levels are learned per numbering depth: every "N Title"
+    shares one level and every "N.M Title" sits one below it."""
+    md = (
+        "# Attention Is All You Need\n"
+        "## 1 Introduction\n"
+        "## 3 Model Architecture\n"
+        "## 3.1 Encoder and Decoder Stacks\n"
+        "# 6 Results\n"
+        "## 6.1 Machine Translation\n"
+    )
+    out = normalize_headings(md)
+    assert out == (
+        "# Attention Is All You Need\n"
+        "## 1 Introduction\n"
+        "## 3 Model Architecture\n"
+        "### 3.1 Encoder and Decoder Stacks\n"
+        "## 6 Results\n"
+        "### 6.1 Machine Translation\n"
+    )
+
+
 def test_heading_normalize_ignores_bare_numbers_with_no_embedded_dot():
     """A heading that merely starts with a bare number ("2024 Outlook") is
     too ambiguous a signal for nesting depth - the override requires at

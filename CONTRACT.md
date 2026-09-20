@@ -32,27 +32,29 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
 - No heading whose text exactly repeats the immediately preceding heading (a Marker
   artifact from running page headers).
 - A document's first heading is always promoted to H1 if nothing shallower precedes it.
-- A heading with its own visible dotted-decimal numbering (`5.4`, `5.4.1`) is leveled
-  by that numbering, not by Marker's own visually-inferred level, when the two
-  disagree. Found via two independent real documents - RFC 9113 and "Attention Is All
-  You Need" - where Marker assigned a heading (`5.4 Error Handling`, `3.3
-  Position-wise Feed-Forward Networks`) the *same* level as the deeper sibling right
-  before it (`5.3.1`/`5.3.2`, `3.2.1`/`3.2.2`/`3.2.3`), nesting it one level too deep
-  instead of alongside its true siblings. Not a level *skip* - the skip-clamp above
-  doesn't catch it, since the wrong level was still reachable. Requires at least one
-  embedded dot (two-plus numbering segments), so a heading merely starting with a bare
-  number (`2024 Outlook`) - too ambiguous a signal for nesting depth - never triggers
-  this override. Applies identically to RAG chunk section breadcrumbs (see
-  `docmd/converters/chunk_extraction.py`) - confirmed both outputs had the identical
-  defect on both real documents before this fix, not something unique to one path.
-- **Not guaranteed**: correct depth for headings using a different numbering
-  convention than dotted-decimal (Roman numerals, "Chapter N", bare sequential
-  numbers). Found via a 961-page real book: Marker assigned wildly inconsistent
-  levels (1 or 4) to "CHAPTER I" through "CHAPTER XII" despite them being visually
-  identical, produced by the exact same styling - evidence that Marker's
-  heading-level signal is noisy in general, not just for one numbering convention.
-  No safe, general text pattern was found to correct this without risking false
-  positives on unrelated content.
+- A heading's own visible section number is trusted over Marker's visually-inferred
+  level, learned per numbering depth: the first "N Title" seen fixes the level of every
+  later "N Title", and each "N.M Title" sits one level below its parent depth. Found via
+  two real documents - RFC 9113 and "Attention Is All You Need" - where Marker gave
+  `5.4 Error Handling` the same level as the deeper `5.3.1`/`5.3.2` before it, gave
+  `1 Introduction` and `6 Results` different levels, and (in the paper) let
+  `3.1 Encoder...` evict its own parent `3 Model Architecture` from the breadcrumb. Not
+  a level *skip*, so the skip-clamp above can't catch it. Numbers must be 1-2 digits
+  then a letter, or dotted (two-plus segments), so `2024 Outlook` never counts. Applies
+  identically to RAG chunk section breadcrumbs (`docmd/heading_numbering.py`, shared by
+  both paths - both had the identical defect on both documents before this).
+- RAG chunk breadcrumbs additionally rank headings by font size where the PDF reports
+  real sizes: same-size headings are the same level, larger is shallower. Found on a
+  real 961-page book where every chapter heading is one 14pt style yet Marker gave
+  levels 1, 2, 3 and 4 (nesting "CHAPTER IV" under "CHAPTER III"). Not applied to the
+  Markdown output, which has no font information.
+- **Not guaranteed**: heading depth on PDFs that report a font size of 1.0 for every
+  span (the text matrix does the scaling) - found on a real RFC, court opinion and
+  financial letter. There is no font signal there, so unnumbered headings fall back to
+  Marker's own noisy level plus the skip-clamp; a real Berkshire Hathaway letter's
+  eight same-style headings came out at levels 4, 2, 4, 3, 1, 3, 4, 4. Block/line
+  height was tried as a fallback and measured too noisy (about 10% spread for one font
+  size) to trust.
 
 **Table structure** (`docmd/postprocess/table_cleanup.py`)
 - Every row in a rendered table has the same column count as its header, padded or

@@ -9,27 +9,20 @@ backend's actual block/page/geometry structure, not a Markdown string.
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from docmd.converters.base import Chunk
+from docmd.heading_numbering import NumberingLevels
 
-# A heading's own visible numbering ("5.4", "5.4.1") is unambiguous ground
-# truth for its nesting depth - unlike Marker's visually-inferred
-# heading_level, which can assign a *reachable* but wrong absolute level
-# (found via a real RFC: "5.4 Error Handling" got the same level as the
-# deeper "5.3.1"/"5.3.2" before it, nesting it under sibling "5.3" instead of
-# next to it - a defect the simple "don't skip more than one level deeper"
-# clamp below doesn't catch, since 5.4's level wasn't a *skip*, just wrong).
-# Requires at least one embedded dot (two-plus segments) so a heading that
-# merely starts with a bare number ("2024 Outlook") - too ambiguous a signal
-# for nesting depth - never triggers this override.
-_NUMBERING_RE = re.compile(r"^(\d+(?:\.\d+)+)\.?\s")
-
-
-def _numbering_depth(text: str) -> int | None:
-    match = _NUMBERING_RE.match(text)
-    return match.group(1).count(".") + 1 if match else None
+# A font size at or below this is a PDF scaling artifact, not a real size:
+# found on a real RFC, SEC-style letter and court opinion, all of which report
+# 1.0 for every span (the text matrix does the actual scaling), so it says
+# nothing about a heading's visual rank.
+_MIN_REAL_FONT_SIZE = 2.0
+# Headings within this fraction of each other's font size are one style.
+# Same-style headings measure a few percent apart from rounding and
+# hinting; genuinely different ranks are usually 15%+ apart.
+_SIZE_TOLERANCE = 0.94
 
 
 # Marker has dozens of internal block types; this maps the ones that carry
@@ -57,6 +50,35 @@ _CONTENT_TYPE_MAP = {
 _IMAGE_BLOCK_TYPES = {"Picture", "Figure", "PictureGroup", "FigureGroup"}
 
 
+def _heading_font_size(block: Any, document: Any) -> float | None:
+    """The first span's font size, or None if unavailable or not a real
+    size (see _MIN_REAL_FONT_SIZE)."""
+    contained = getattr(block, "contained_blocks", None)
+    if contained is None:
+        return None
+    for span in contained(document):
+        if span.block_type.name == "Span":
+            size = getattr(span, "font_size", None)
+            return size if size and size > _MIN_REAL_FONT_SIZE else None
+    return None
+
+
+def _size_ranks(sizes: list[float]) -> list[float]:
+    """Representative size for each distinct heading style, largest first."""
+    reps: list[float] = []
+    for size in sorted(set(sizes), reverse=True):
+        if not reps or size < reps[-1] * _SIZE_TOLERANCE:
+            reps.append(size)
+    return reps
+
+
+def _rank_of(size: float, reps: list[float]) -> int:
+    for index, rep in enumerate(reps, start=1):
+        if size >= rep * _SIZE_TOLERANCE:
+            return index
+    return len(reps)
+
+
 def extract_chunks(document: Any) -> list[Chunk]:
     """Walks every page's top-level blocks in document order, building one
     Chunk per block that has real text and isn't flagged by Marker itself as
@@ -68,6 +90,23 @@ def extract_chunks(document: Any) -> list[Chunk]:
     chunks: list[Chunk] = []
     heading_stack: dict[int, str] = {}
     last_level = 0
+    numbering = NumberingLevels()
+
+    # Marker's heading_level is visually inferred and noisy: on a real
+    # 961-page book every chapter heading is the same 14pt, yet Marker gave
+    # them four different levels. Where a PDF reports real font sizes,
+    # headings of the same size are the same level - ranked by size, largest
+    # shallowest - and Marker's own level is only the fallback for PDFs that
+    # don't (sizes of 1.0), where nothing better is available.
+    sizes: dict[str, float] = {}
+    for page in document.pages:
+        for block_id in page.structure or []:
+            block = document.get_block(block_id)
+            if block.block_type.name == "SectionHeader" and not getattr(block, "ignore_for_output", False):
+                size = _heading_font_size(block, document)
+                if size is not None:
+                    sizes[block_id] = size
+    reps = _size_ranks(list(sizes.values()))
 
     for page in document.pages:
         for block_id in page.structure or []:
@@ -81,15 +120,15 @@ def extract_chunks(document: Any) -> list[Chunk]:
 
             heading_level = getattr(block, "heading_level", None)
             if block_type_name == "SectionHeader" and heading_level:
-                numbering_depth = _numbering_depth(text)
-                if numbering_depth is not None:
-                    heading_level = numbering_depth
-                elif heading_level > last_level + 1:
-                    # No numbering to trust instead - fall back to clamping
-                    # a sudden jump, the same rule heading_normalize.py
-                    # applies for Markdown output: a level may deepen by at
-                    # most one relative to the last heading actually used.
-                    heading_level = last_level + 1
+                hint = _rank_of(sizes[block_id], reps) if block_id in sizes else heading_level
+                # A level may deepen by at most one relative to the last
+                # heading actually used - the same rule heading_normalize.py
+                # applies to Markdown output.
+                hint = min(hint, last_level + 1)
+                # A visible section number outranks both: its structure
+                # relative to other numbered headings is unambiguous.
+                resolved = numbering.resolve(text, hint)
+                heading_level = resolved if resolved is not None else hint
                 for level in [lvl for lvl in heading_stack if lvl >= heading_level]:
                     del heading_stack[level]
                 if text:

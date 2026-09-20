@@ -26,6 +26,12 @@ class _Polygon:
 
 
 @dataclass
+class _Span:
+    font_size: float
+    block_type: _BlockType = field(default_factory=lambda: _BlockType("Span"))
+
+
+@dataclass
 class _Block:
     block_type: _BlockType
     text: str
@@ -33,9 +39,13 @@ class _Block:
     heading_level: int | None = None
     ignore_for_output: bool = False
     polygon: _Polygon = field(default_factory=_Polygon)
+    font_size: float | None = None
 
     def raw_text(self, _document):
         return self.text
+
+    def contained_blocks(self, _document):
+        return [_Span(self.font_size)] if self.font_size is not None else []
 
 
 @dataclass
@@ -53,8 +63,10 @@ class _Document:
         return self._blocks[block_id]
 
 
-def _heading(text, level):
-    return _Block(block_type=_BlockType("SectionHeader"), text=text, page_id=0, heading_level=level)
+def _heading(text, level, size=None):
+    return _Block(
+        block_type=_BlockType("SectionHeader"), text=text, page_id=0, heading_level=level, font_size=size
+    )
 
 
 def _text(text):
@@ -123,3 +135,61 @@ def test_multiline_heading_is_collapsed_to_one_line_in_the_breadcrumb():
     body_chunk = next(c for c in chunks if c.content_type == "text")
     assert body_chunk.section == "GOLDEY, ASSOCIATE WARDEN, et al. v. FIELDS et al."
     assert "\n" not in body_chunk.section
+
+
+def test_bare_number_parent_stays_in_the_breadcrumb_above_its_dotted_children():
+    """Found on a real arXiv paper: "3 Model Architecture" vanished from
+    every breadcrumb below it (`Abstract > 3.1 Encoder...`) because its
+    dotted child was given the same level and evicted it."""
+    chunks = _build(
+        [
+            _heading("1 Introduction", level=2),
+            _heading("3 Model Architecture", level=2),
+            _heading("3.1 Encoder and Decoder Stacks", level=2),
+            _text("body"),
+        ]
+    )
+    body = next(c for c in chunks if c.content_type == "text")
+    assert body.section == "3 Model Architecture > 3.1 Encoder and Decoder Stacks"
+
+
+def test_same_size_headings_are_the_same_level_whatever_marker_said():
+    """Found on a real 961-page book: every chapter heading is the same 14pt
+    style, yet Marker gave them levels 1, 2, 3 and 4, nesting "CHAPTER IV"
+    under "CHAPTER III"."""
+    chunks = _build(
+        [
+            _heading("CHAPTER III", level=1, size=14.0),
+            _heading("CHAPTER IV", level=4, size=14.0),
+            _text("body"),
+        ]
+    )
+    body = next(c for c in chunks if c.content_type == "text")
+    assert body.section == "CHAPTER IV"
+
+
+def test_larger_font_size_ranks_shallower():
+    chunks = _build(
+        [
+            _heading("Book Title", level=3, size=17.0),
+            _heading("Section", level=1, size=12.0),
+            _text("body"),
+        ]
+    )
+    body = next(c for c in chunks if c.content_type == "text")
+    assert body.section == "Book Title > Section"
+
+
+def test_unreal_font_size_is_ignored_and_marker_level_is_the_fallback():
+    """Real RFC, court-opinion and financial-letter PDFs report a font size
+    of 1.0 for every span (the text matrix does the scaling) - no signal, so
+    the size ranking must not run on it."""
+    chunks = _build(
+        [
+            _heading("Title", level=1, size=1.0),
+            _heading("Sub", level=2, size=1.0),
+            _text("body"),
+        ]
+    )
+    body = next(c for c in chunks if c.content_type == "text")
+    assert body.section == "Title > Sub"
