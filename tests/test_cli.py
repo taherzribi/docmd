@@ -171,3 +171,28 @@ def test_cli_batch_empty_directory_does_not_error(tmp_path):
     runner = CliRunner()
     result = runner.invoke(main, ["batch", str(input_dir), "-o", str(out_dir)])
     assert result.exit_code == 0, result.output
+
+
+def test_cli_search_finds_result_from_batch_rag_output(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    shutil.copy(FIXTURES / "sample.pdf", input_dir / "sample.pdf")
+    chunks_dir = tmp_path / "chunks"
+
+    runner = CliRunner()
+    batch_result = runner.invoke(main, ["batch", str(input_dir), "-o", str(chunks_dir), "--format", "rag"])
+    assert batch_result.exit_code == 0, batch_result.output
+
+    search_result = runner.invoke(main, ["search", str(chunks_dir), "regional sales"])
+    assert search_result.exit_code == 0, search_result.output
+    assert "sample.json" in search_result.output
+    assert "Page 0" in search_result.output
+
+
+def test_cli_search_no_results_does_not_error(tmp_path):
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    runner = CliRunner()
+    result = runner.invoke(main, ["search", str(empty_dir), "nothing here"])
+    assert result.exit_code == 0, result.output
+    assert "no results" in result.output

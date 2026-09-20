@@ -13,6 +13,7 @@ from docmd import convert_document
 from docmd.config import ConvertConfig
 from docmd.converters.base import ConversionResult
 from docmd.errors import DocmdError
+from docmd.search import search as run_search
 from docmd.tables import extract_tables_as_csv
 from docmd.validate import validate_markdown
 
@@ -308,6 +309,36 @@ def batch(
         for rel, message in failed:
             click.echo(f"  {rel}: {message}", err=True)
         sys.exit(1)
+
+
+@main.command(name="search")
+@click.argument("directory", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument("query")
+@click.option(
+    "--limit",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Maximum number of results to show.",
+)
+def search_command(directory: Path, query: str, limit: int) -> None:
+    """Search RAG chunk JSON files under DIRECTORY (produced by `docmd
+    batch --format rag`) for QUERY - keyword matching, ranked by relevance,
+    not semantic search."""
+    results = run_search(directory, query, limit=limit)
+    if not results:
+        click.echo("no results found", err=True)
+        return
+
+    for result in results:
+        click.echo(result.source)
+        click.echo(f"  Page {result.chunk.page}")
+        if result.chunk.section:
+            click.echo(f"  Section: {result.chunk.section}")
+        snippet = result.chunk.text[:200].replace("\n", " ").strip()
+        ellipsis = "..." if len(result.chunk.text) > 200 else ""
+        click.echo(f'  "{snippet}{ellipsis}"')
+        click.echo()
 
 
 if __name__ == "__main__":

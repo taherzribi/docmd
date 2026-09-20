@@ -266,6 +266,26 @@ Runs sequentially, not in parallel - Marker's models are loaded once and
 reused across files in-process; concurrent conversions against that shared
 state haven't been verified safe, so this doesn't guess past that.
 
+## Searching across documents
+
+```
+docmd batch ./documents -o ./chunks --format rag
+docmd search ./chunks "revenue in 2024"
+
+annual-report.json
+  Page 87
+  Section: Financial Results
+  "...revenue increased by..."
+```
+
+Searches the RAG chunk JSON `docmd batch --format rag` already produced -
+not raw documents - so repeated searches don't reconvert anything. Keyword
+matching ranked by relevance (word frequency plus an exact-phrase bonus),
+not semantic search: a query for "revenue" won't find a chunk that only
+says "income". Semantic search is real future scope once there's a
+provider key to build and test an embedding-based mode against, the same
+way `use_llm` is gated on Marker's own LLM provider setup.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a
