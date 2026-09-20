@@ -32,6 +32,27 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
 - No heading whose text exactly repeats the immediately preceding heading (a Marker
   artifact from running page headers).
 - A document's first heading is always promoted to H1 if nothing shallower precedes it.
+- A heading with its own visible dotted-decimal numbering (`5.4`, `5.4.1`) is leveled
+  by that numbering, not by Marker's own visually-inferred level, when the two
+  disagree. Found via two independent real documents - RFC 9113 and "Attention Is All
+  You Need" - where Marker assigned a heading (`5.4 Error Handling`, `3.3
+  Position-wise Feed-Forward Networks`) the *same* level as the deeper sibling right
+  before it (`5.3.1`/`5.3.2`, `3.2.1`/`3.2.2`/`3.2.3`), nesting it one level too deep
+  instead of alongside its true siblings. Not a level *skip* - the skip-clamp above
+  doesn't catch it, since the wrong level was still reachable. Requires at least one
+  embedded dot (two-plus numbering segments), so a heading merely starting with a bare
+  number (`2024 Outlook`) - too ambiguous a signal for nesting depth - never triggers
+  this override. Applies identically to RAG chunk section breadcrumbs (see
+  `docmd/converters/chunk_extraction.py`) - confirmed both outputs had the identical
+  defect on both real documents before this fix, not something unique to one path.
+- **Not guaranteed**: correct depth for headings using a different numbering
+  convention than dotted-decimal (Roman numerals, "Chapter N", bare sequential
+  numbers). Found via a 961-page real book: Marker assigned wildly inconsistent
+  levels (1 or 4) to "CHAPTER I" through "CHAPTER XII" despite them being visually
+  identical, produced by the exact same styling - evidence that Marker's
+  heading-level signal is noisy in general, not just for one numbering convention.
+  No safe, general text pattern was found to correct this without risking false
+  positives on unrelated content.
 
 **Table structure** (`docmd/postprocess/table_cleanup.py`)
 - Every row in a rendered table has the same column count as its header, padded or

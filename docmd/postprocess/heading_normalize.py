@@ -14,6 +14,31 @@ import re
 
 _ATX_RE = re.compile(r"^(#{1,6})\s*(.*?)\s*$")
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
+# A heading's own visible numbering ("5.4", "5.4.1") is unambiguous ground
+# truth for its nesting depth - unlike Marker's visually-inferred heading
+# level, which can assign a *reachable* but wrong absolute level (found via
+# a real RFC: "5.4 Error Handling" got the same level as "5.3.1"/"5.3.2"
+# right before it, rendering one level too deep instead of alongside "5.3" -
+# a defect the skip-clamp below doesn't catch, since 5.4's level wasn't a
+# *skip* from the previous heading, just wrong). Requires at least one
+# embedded dot (two-plus segments) so a heading merely starting with a bare
+# number ("2024 Outlook") - too ambiguous a signal for nesting depth - never
+# triggers this override. See docmd/converters/chunk_extraction.py, which
+# applies the identical rule to RAG chunk section breadcrumbs.
+_NUMBERING_RE = re.compile(r"^(\d+(?:\.\d+)+)\.?\s")
+# Marker wraps a heading's visible text in an HTML anchor span and/or
+# Markdown bold/link syntax (e.g. `<span id="page-22-0"></span>**[5.4. Error
+# Handling](#page-22-0)**`) - stripped here only to detect the numbering
+# pattern, not to change what actually gets rendered.
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_LEADING_MARKDOWN_DECORATION_RE = re.compile(r"^[\s*_\[\]]+")
+
+
+def _numbering_depth(text: str) -> int | None:
+    cleaned = _HTML_TAG_RE.sub("", text)
+    cleaned = _LEADING_MARKDOWN_DECORATION_RE.sub("", cleaned)
+    match = _NUMBERING_RE.match(cleaned)
+    return match.group(1).count(".") + 1 if match else None
 
 
 def normalize_headings(markdown: str) -> str:
@@ -66,7 +91,10 @@ def normalize_headings(markdown: str) -> str:
         if text == last_heading_text:
             continue  # drop immediate duplicate heading
 
-        if level > last_level + 1:
+        numbering_depth = _numbering_depth(text)
+        if numbering_depth is not None:
+            level = min(numbering_depth, 6)  # ATX headings cap at 6 '#'
+        elif level > last_level + 1:
             level = last_level + 1
 
         last_level = level

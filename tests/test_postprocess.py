@@ -34,6 +34,55 @@ def test_heading_normalize_fixes_level_skip_then_leaves_recovered_depth_alone():
     )
 
 
+def test_heading_normalize_trusts_visible_numbering_over_wrong_backend_level():
+    """The exact pattern found in a real RFC (RFC 9113) and confirmed again
+    in a real arXiv paper ("Attention Is All You Need"): Marker assigned
+    "5.4 Error Handling" the *same* level as the deeper "5.3.1"/"5.3.2"
+    right before it - not a level *skip* (the clamp above doesn't catch
+    it), just a wrong absolute level, rendering "5.4" one level too deep
+    instead of alongside its true sibling "5.3". A heading's own visible
+    dotted-decimal numbering is unambiguous ground truth for its depth,
+    unlike Marker's visually-inferred level - trusted here instead."""
+    md = (
+        "## 5.3. Prioritization\n"
+        "### 5.3.1. Background\n"
+        "### 5.3.2. Priority Signaling\n"
+        "### 5.4. Error Handling\n"  # wrong: Marker gave this H3, same as 5.3.x
+        "#### 5.4.1. Connection Error Handling\n"
+    )
+    out = normalize_headings(md)
+    assert out == (
+        "## 5.3. Prioritization\n"
+        "### 5.3.1. Background\n"
+        "### 5.3.2. Priority Signaling\n"
+        "## 5.4. Error Handling\n"
+        "### 5.4.1. Connection Error Handling\n"
+    )
+
+
+def test_heading_normalize_numbering_override_sees_past_html_and_markdown_wrapping():
+    """Marker wraps real heading text in an HTML anchor span and Markdown
+    bold/link syntax - the numbering-depth override has to look past that
+    decoration to find the leading number, not just fail silently."""
+    md = (
+        '## <span id="a"></span>**[5.3. Prioritization](#a)**\n'
+        '### <span id="b"></span>**[5.4. Error Handling](#b)**\n'
+    )
+    out = normalize_headings(md)
+    assert '## <span id="b"></span>**[5.4. Error Handling](#b)**' in out
+
+
+def test_heading_normalize_ignores_bare_numbers_with_no_embedded_dot():
+    """A heading that merely starts with a bare number ("2024 Outlook") is
+    too ambiguous a signal for nesting depth - the override requires at
+    least one embedded dot (a real multi-segment section number) before it
+    touches the level Marker assigned."""
+    md = "# Report\n### 2024 Outlook\n"
+    out = normalize_headings(md)
+    # Falls back to the ordinary skip-clamp, not the numbering override.
+    assert out == "# Report\n## 2024 Outlook\n"
+
+
 def test_heading_normalize_drops_empty_heading():
     md = "# Title\n##\nBody text.\n"
     out = normalize_headings(md)

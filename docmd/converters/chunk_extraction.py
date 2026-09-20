@@ -9,9 +9,28 @@ backend's actual block/page/geometry structure, not a Markdown string.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from docmd.converters.base import Chunk
+
+# A heading's own visible numbering ("5.4", "5.4.1") is unambiguous ground
+# truth for its nesting depth - unlike Marker's visually-inferred
+# heading_level, which can assign a *reachable* but wrong absolute level
+# (found via a real RFC: "5.4 Error Handling" got the same level as the
+# deeper "5.3.1"/"5.3.2" before it, nesting it under sibling "5.3" instead of
+# next to it - a defect the simple "don't skip more than one level deeper"
+# clamp below doesn't catch, since 5.4's level wasn't a *skip*, just wrong).
+# Requires at least one embedded dot (two-plus segments) so a heading that
+# merely starts with a bare number ("2024 Outlook") - too ambiguous a signal
+# for nesting depth - never triggers this override.
+_NUMBERING_RE = re.compile(r"^(\d+(?:\.\d+)+)\.?\s")
+
+
+def _numbering_depth(text: str) -> int | None:
+    match = _NUMBERING_RE.match(text)
+    return match.group(1).count(".") + 1 if match else None
+
 
 # Marker has dozens of internal block types; this maps the ones that carry
 # real chunk-worthy text onto docmd's small, stable, backend-agnostic
@@ -48,6 +67,7 @@ def extract_chunks(document: Any) -> list[Chunk]:
     everything ignore_for_output doesn't catch)."""
     chunks: list[Chunk] = []
     heading_stack: dict[int, str] = {}
+    last_level = 0
 
     for page in document.pages:
         for block_id in page.structure or []:
@@ -61,10 +81,20 @@ def extract_chunks(document: Any) -> list[Chunk]:
 
             heading_level = getattr(block, "heading_level", None)
             if block_type_name == "SectionHeader" and heading_level:
+                numbering_depth = _numbering_depth(text)
+                if numbering_depth is not None:
+                    heading_level = numbering_depth
+                elif heading_level > last_level + 1:
+                    # No numbering to trust instead - fall back to clamping
+                    # a sudden jump, the same rule heading_normalize.py
+                    # applies for Markdown output: a level may deepen by at
+                    # most one relative to the last heading actually used.
+                    heading_level = last_level + 1
                 for level in [lvl for lvl in heading_stack if lvl >= heading_level]:
                     del heading_stack[level]
                 if text:
                     heading_stack[heading_level] = text
+                last_level = heading_level
 
             if not text and block_type_name not in _IMAGE_BLOCK_TYPES:
                 continue
