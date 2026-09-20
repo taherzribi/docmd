@@ -31,6 +31,10 @@ a non-trivial setup process before you convert your first file.
 (table cleanup, heading normalization) so the output is closer to what a RAG pipeline
 actually wants, not just raw model output.
 
+See [EVIDENCE.md](EVIDENCE.md) for the specific real documents, real defects, and
+real fixes behind that claim — not a benchmark score, a log of verifiable before/after
+examples with the commit and regression test for each one.
+
 A hosted API (`POST` a file, get Markdown back, no local setup) is planned — see
 [ARCHITECTURE.md](ARCHITECTURE.md). It is not live yet; this repo is the open-source
 core, usable standalone today.
