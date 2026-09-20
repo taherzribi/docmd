@@ -39,6 +39,14 @@ class ConvertConfig:
             - "alt-text": images are saved next to the output file and kept
               as real Markdown image links with non-empty alt text.
             - "skip": images are dropped entirely, no placeholder either.
+        include_chunks: Also populate `ConversionResult.chunks` - one entry
+            per structural block (paragraph, table, heading, ...) with page
+            number, section breadcrumb, content type, and bounding box, for
+            RAG/search use cases that need more than a single Markdown
+            string. Off by default: computing it costs a walk over the
+            backend's raw block tree that most callers don't need, and only
+            Marker (not a future backend without equivalent structure) is
+            guaranteed to support it.
     """
 
     use_llm: bool = False
@@ -47,6 +55,7 @@ class ConvertConfig:
     clean_tables: bool = True
     fix_rtl_brackets: bool = True
     image_mode: str = "placeholder"
+    include_chunks: bool = False
 
     def __post_init__(self) -> None:
         if self.image_mode not in _VALID_IMAGE_MODES:

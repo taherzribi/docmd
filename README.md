@@ -173,6 +173,33 @@ print(result.provenance)
 Same shape regardless of which backend actually ran - `convert()` (the plain
 string-returning function) doesn't expose this; use `convert_document()` for it.
 
+## RAG-ready chunks
+
+For search/RAG use cases that need more than one Markdown string, opt into
+per-block chunks with page, section, content type, and bounding-box metadata:
+
+```python
+from docmd import convert_document
+from docmd.config import ConvertConfig
+
+result = convert_document("report.pdf", config=ConvertConfig(include_chunks=True))
+for chunk in result.chunks:
+    print(chunk.page, chunk.content_type, chunk.section, chunk.text[:50])
+```
+
+Or from the CLI: `docmd convert report.pdf --format rag -o chunks.json`.
+
+One chunk per structural block the backend identified (a paragraph, a table, a
+heading, an image, ...) - not a token-budgeted or semantically merged chunk.
+`content_type` is one of a small, stable set (`text`, `heading`, `table`,
+`image`, `list`), independent of Marker's own internal block-type names.
+`section` is a breadcrumb of the nearest heading at each level above the chunk
+(e.g. `"Chapter 3 > 3.1 Introduction"`). Chunk text is the block's own raw
+text, extracted before docmd's Markdown post-processing runs - a table
+chunk's text is the backend's flattened cell text, not a cleaned Markdown
+table. `chunks` is `None` unless `include_chunks=True` - the default
+`convert_document()` call is unaffected.
+
 ## How it works
 
 `docmd` wraps [Marker](https://github.com/datalab-to/marker) with sane defaults and a

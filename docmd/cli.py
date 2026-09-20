@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import sys
 from pathlib import Path
 
@@ -59,6 +61,17 @@ def main() -> None:
     "the output file's directory when -o is given; without -o, images "
     "won't be saved unless this is set explicitly.",
 )
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["markdown", "rag"]),
+    default="markdown",
+    show_default=True,
+    help=(
+        "'rag' writes a JSON array of chunks (text/page/section/content_type/bbox) "
+        "instead of Markdown - see ConvertConfig.include_chunks."
+    ),
+)
 def convert(
     file: Path,
     output: Path | None,
@@ -66,9 +79,15 @@ def convert(
     use_llm: bool,
     image_mode: str,
     image_dir: Path | None,
+    output_format: str,
 ) -> None:
     """Convert FILE to Markdown."""
-    config = ConvertConfig(force_ocr=force_ocr, use_llm=use_llm, image_mode=image_mode)
+    config = ConvertConfig(
+        force_ocr=force_ocr,
+        use_llm=use_llm,
+        image_mode=image_mode,
+        include_chunks=(output_format == "rag"),
+    )
 
     if image_mode == "alt-text" and image_dir is None:
         if output is not None:
@@ -87,11 +106,17 @@ def convert(
         click.echo(f"error: {exc}", err=True)
         sys.exit(1)
 
+    if output_format == "rag":
+        assert result.chunks is not None  # guaranteed by include_chunks=True above
+        content = json.dumps([dataclasses.asdict(chunk) for chunk in result.chunks], indent=2)
+    else:
+        content = result.markdown
+
     if output is not None:
-        output.write_text(result.markdown, encoding="utf-8")
+        output.write_text(content, encoding="utf-8")
         click.echo(f"wrote {output} ({result.page_count} page(s))", err=True)
     else:
-        click.echo(result.markdown)
+        click.echo(content)
 
 
 if __name__ == "__main__":

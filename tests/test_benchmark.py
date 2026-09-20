@@ -26,6 +26,8 @@ from pathlib import Path
 import pytest
 
 from docmd import convert_document
+from docmd.config import ConvertConfig
+from docmd.converters.base import CONTENT_TYPES
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -51,6 +53,12 @@ def converted():
     """Converts every fixture once; every check below reads from this
     shared result instead of re-converting, so the benchmark stays fast."""
     return {name: convert_document(str(FIXTURES / name)) for name in ALL_FIXTURES}
+
+
+@pytest.fixture(scope="module")
+def converted_with_chunks():
+    config = ConvertConfig(include_chunks=True)
+    return {name: convert_document(str(FIXTURES / name), config=config) for name in ALL_FIXTURES}
 
 
 def _heading_levels(markdown: str) -> list[int]:
@@ -156,3 +164,22 @@ class TestPageRotation:
         result = converted["rotated_page.pdf"]
         assert "first page, and it is not rotated" in result.markdown
         assert "its /Rotate flag is set to ninety" in result.markdown
+
+
+class TestRAGChunks:
+    """See CONTRACT.md: "RAG chunks"."""
+
+    def test_content_type_always_in_stable_vocabulary(self, converted_with_chunks):
+        for name, result in converted_with_chunks.items():
+            for chunk in result.chunks:
+                assert chunk.content_type in CONTENT_TYPES, (
+                    f"{name}: {chunk.content_type!r} not in the stable vocabulary"
+                )
+
+    def test_repeated_page_header_never_becomes_its_own_chunk(self, converted_with_chunks):
+        result = converted_with_chunks["running_header.pdf"]
+        assert all("CONFIDENTIAL" not in chunk.text for chunk in result.chunks)
+
+    def test_chunks_none_without_include_chunks(self, converted):
+        for name, result in converted.items():
+            assert result.chunks is None, f"{name}: chunks populated without include_chunks=True"

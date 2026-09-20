@@ -15,6 +15,7 @@ from typing import Any
 
 from docmd.config import ConvertConfig
 from docmd.converters.base import ConversionResult
+from docmd.converters.chunk_extraction import extract_chunks
 from docmd.errors import (
     ConversionError,
     EncryptedDocumentError,
@@ -121,7 +122,19 @@ class MarkerConverter:
                 renderer=config_parser.get_renderer(),
                 llm_service=config_parser.get_llm_service(),
             )
-            rendered = converter(filepath)
+            if config.include_chunks:
+                # Same two steps PdfConverter.__call__() does internally -
+                # done explicitly here so the pre-render Document (blocks,
+                # pages, geometry) stays available for extract_chunks()
+                # below, instead of being discarded once rendered to
+                # Markdown. Not taken for the default case, so existing
+                # callers see byte-identical behavior to before this existed.
+                document = converter.build_document(filepath)
+                renderer = converter.resolve_dependencies(converter.renderer)
+                rendered = renderer(document)
+            else:
+                document = None
+                rendered = converter(filepath)
         except Exception as exc:
             message = str(exc).lower()
             exc_type_name = type(exc).__name__.lower()
@@ -155,10 +168,13 @@ class MarkerConverter:
             "conversion_duration_ms": duration_ms,
         }
 
+        chunks = extract_chunks(document) if document is not None else None
+
         return ConversionResult(
             markdown=markdown,
             page_count=page_count,
             images=images,
             metadata=metadata,
             provenance=provenance,
+            chunks=chunks,
         )

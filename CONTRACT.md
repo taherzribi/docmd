@@ -59,6 +59,19 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   cover the equivalent reversal for parentheses - see "What's explicitly not
   guaranteed" below.
 
+**RAG chunks** (`docmd/converters/chunk_extraction.py`, opt-in via
+`ConvertConfig.include_chunks`)
+- `content_type` is always one of `docmd.converters.base.CONTENT_TYPES` - never a raw
+  Marker block-type name.
+- A page header/footer repeated across pages (including the case where it gets
+  misclassified as a heading on a later page - the same real defect
+  `heading_normalize.py` guards against at the Markdown-string level) never produces
+  its own chunk.
+- Chunk text is the backend's own raw per-block text - it does not receive
+  `clean_tables`, `heading_normalize`, or `fix_rtl_brackets`'s fixes, since those
+  operate on the final rendered Markdown string, not individual blocks.
+- `chunks` is `None` (not an empty list) unless `include_chunks=True` was passed.
+
 **Errors** (`docmd/errors.py`)
 - A small, fixed set of `DocmdError` subclasses for known failure categories:
   `UnsupportedFormatError`, `MissingExtraError`, `MissingSystemDependencyError`,

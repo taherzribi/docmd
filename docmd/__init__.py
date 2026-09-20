@@ -11,15 +11,15 @@ import tempfile
 from pathlib import Path
 
 from docmd.config import ConvertConfig
-from docmd.converters.base import ConversionResult
+from docmd.converters.base import Chunk, ConversionResult
 from docmd.converters.registry import get_converter
 from docmd.postprocess.heading_normalize import normalize_headings
 from docmd.postprocess.image_handling import apply_image_handling
 from docmd.postprocess.rtl_fix import fix_rtl_brackets
 from docmd.postprocess.table_cleanup import clean_tables
 
-__all__ = ["convert", "convert_document", "ConvertConfig", "ConversionResult"]
-__version__ = "0.1.3"
+__all__ = ["convert", "convert_document", "ConvertConfig", "ConversionResult", "Chunk"]
+__version__ = "0.1.4"
 
 
 def convert_document(
@@ -96,4 +96,5 @@ def _convert_path(
         images=result.images,
         metadata=result.metadata,
         provenance=result.provenance,
+        chunks=result.chunks,
     )
