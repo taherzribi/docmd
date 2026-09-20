@@ -193,3 +193,21 @@ def test_unreal_font_size_is_ignored_and_marker_level_is_the_fallback():
     )
     body = next(c for c in chunks if c.content_type == "text")
     assert body.section == "Title > Sub"
+
+
+def test_same_size_headings_stay_siblings_after_a_jump_across_sizes():
+    """Found on a real DOCX news digest: a large section heading, then a run
+    of small same-size headings (city, article, city, article...). Clamping
+    each to "one deeper than the last" staircased every one under the one
+    before it. Same size means same level, whatever came in between."""
+    chunks = _build(
+        [
+            _heading("Digest", level=1, size=26.7),
+            _heading("NOVOSIBIRSK", level=3, size=13.3),
+            _heading("Anthem planned", level=3, size=13.3),
+            _heading("KEMEROVO", level=3, size=13.3),
+            _text("body"),
+        ]
+    )
+    body = next(c for c in chunks if c.content_type == "text")
+    assert body.section == "Digest > KEMEROVO"

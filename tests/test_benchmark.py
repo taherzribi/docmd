@@ -40,7 +40,7 @@ _HAS_WEASYPRINT_DEPS = ctypes.util.find_library("gobject-2.0") is not None
 
 ALL_FIXTURES = [
     "sample.pdf",
-    *(["sample.docx"] if _HAS_WEASYPRINT_DEPS else []),
+    *(["sample.docx", "sample.pptx"] if _HAS_WEASYPRINT_DEPS else []),
     "stress.pdf",
     "running_header.pdf",
     "merged_cells.pdf",

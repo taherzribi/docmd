@@ -63,3 +63,33 @@ def test_convert_docx_produces_structured_markdown():
 def test_convert_unsupported_format_raises():
     with pytest.raises(UnsupportedFormatError):
         convert_document(str(FIXTURES / "generate_fixtures.py"))
+
+
+@pytest.mark.skipif(
+    not _HAS_WEASYPRINT_DEPS,
+    reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed on this machine",
+)
+def test_convert_pptx_gives_each_slide_its_own_section():
+    """Found via real decks (Apache POI's public test set): Marker's PPTX
+    provider flows all slides into one document paginated by content height,
+    so 34 slides became 15 "pages" and nothing marked where a slide started.
+    Its own `include_slide_number` option can't be enabled through config in
+    marker-pdf 2.0.0 (see marker_converter._enable_slide_headings)."""
+    result = convert_document(str(FIXTURES / "sample.pptx"))
+    for n in (1, 2, 3):
+        assert f"Slide {n}" in result.markdown
+    assert result.markdown.index("Slide 1") < result.markdown.index("Slide 2") < result.markdown.index("Slide 3")
+
+
+@pytest.mark.skipif(
+    not _HAS_WEASYPRINT_DEPS,
+    reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed on this machine",
+)
+def test_pptx_chunk_sections_name_their_slide():
+    from docmd.config import ConvertConfig
+
+    result = convert_document(str(FIXTURES / "sample.pptx"), config=ConvertConfig(include_chunks=True))
+    slide_roots = {c.section.split(" > ")[0] for c in result.chunks if c.section.startswith("Slide")}
+    assert slide_roots == {"Slide 1", "Slide 2", "Slide 3"}
+    titled = [c for c in result.chunks if c.section == "Slide 2 > Customer Retention"]
+    assert titled, "slide title should nest under its slide heading"

@@ -120,11 +120,20 @@ def extract_chunks(document: Any) -> list[Chunk]:
 
             heading_level = getattr(block, "heading_level", None)
             if block_type_name == "SectionHeader" and heading_level:
-                hint = _rank_of(sizes[block_id], reps) if block_id in sizes else heading_level
-                # A level may deepen by at most one relative to the last
-                # heading actually used - the same rule heading_normalize.py
-                # applies to Markdown output.
-                hint = min(hint, last_level + 1)
+                # A real size ranking is used as-is, not clamped: a document
+                # may legitimately jump from its largest heading to its
+                # smallest, and level gaps are harmless in a breadcrumb,
+                # whereas clamping staircases same-size headings into
+                # ever-deeper levels (found on a real DOCX news digest, where
+                # each city heading nested under the article title before it).
+                # With no size signal, Marker's own noisy level is limited to
+                # deepening by at most one relative to the last heading, the
+                # same rule heading_normalize.py applies to Markdown.
+                hint = (
+                    _rank_of(sizes[block_id], reps)
+                    if block_id in sizes
+                    else min(heading_level, last_level + 1)
+                )
                 # A visible section number outranks both: its structure
                 # relative to other numbered headings is unambiguous.
                 resolved = numbering.resolve(text, hint)

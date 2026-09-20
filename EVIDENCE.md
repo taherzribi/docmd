@@ -158,6 +158,23 @@ Ranking by raw word counts put a long bullet repeating "attention" ahead of the 
 chunk that defines self-attention. **Fix:** BM25 (rare-term weighting, saturation, length
 normalization). Commit `8fdb31d`.
 
+### PowerPoint slides flowing together with no boundaries
+
+**Found on:** six real decks from Apache POI's public test set, converted through
+`docmd batch --format rag`.
+
+34 slides came out as 15 "pages", 28 as 11, 24 as 7, 10 as 2, and nothing in the
+Markdown or chunks marked where a slide began - so the README's "one section per slide"
+was untrue. Marker has an `include_slide_number` option for exactly this, but it is dead
+in marker-pdf 2.0.0: the slide HTML is built before the config is applied, so it can
+never be enabled through config.
+
+**Fix:** set on Marker's provider class directly. After, a real 9-slide deck produces
+exactly 9 `Slide N` sections with titles nested beneath. The same test found and
+documented (not fixed) three limits: speaker notes are dropped by Marker, WMF images
+couldn't be decoded in testing on macOS, and `page` for Office files is a rendered-PDF page.
+Text recall on all 14 real DOCX/PPTX files was 95-100%.
+
 ## Claims verified, not just assumed
 
 - **Multi-column reading order.** A prior finding suggested this could fail

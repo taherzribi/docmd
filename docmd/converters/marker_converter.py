@@ -74,6 +74,28 @@ def _marker_version() -> str:
     return _marker_version_cache
 
 
+def _enable_slide_headings() -> None:
+    """Turns on Marker's "Slide N" heading before each PPTX slide.
+
+    Marker's PowerPoint provider concatenates every slide into one HTML
+    document and renders that to a PDF, so slides flow onto pages by content
+    height, not one per page: found via real decks where 34 slides became 15
+    "pages" and 10 became 2. Without a heading per slide nothing marks where
+    one starts, so neither Markdown sections nor chunk `page` numbers
+    correspond to slides at all.
+
+    Marker exposes this as `include_slide_number`, but passing it through the
+    config dict cannot work in marker-pdf 2.0.0 (the pinned version): the
+    provider builds its slide HTML in `convert_pptx_to_pdf`, which runs
+    before `super().__init__()` applies the config, so `self.include_slide_number`
+    is always the class default. Setting the class attribute is the only
+    thing that takes effect.
+    """
+    from marker.providers.powerpoint import PowerPointProvider
+
+    PowerPointProvider.include_slide_number = True
+
+
 def _build_config_dict(config: ConvertConfig):
     from marker.config.parser import ConfigParser
 
@@ -110,6 +132,9 @@ class MarkerConverter:
             from marker.output import text_from_rendered
         except ImportError as exc:
             raise MissingExtraError(Path(filepath).suffix) from exc
+
+        if filepath.lower().endswith(".pptx"):
+            _enable_slide_headings()
 
         config_parser = _build_config_dict(config)
         config_dict = config_parser.generate_config_dict()

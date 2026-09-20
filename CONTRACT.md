@@ -56,6 +56,18 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   height was tried as a fallback and measured too noisy (about 10% spread for one font
   size) to trust.
 
+**PPTX slide boundaries** (`docmd/converters/marker_converter.py`)
+- Each slide gets a `Slide N` heading, so Markdown sections and chunk section
+  breadcrumbs correspond to real slides (`Slide 2 > Customer Retention`). Found via real
+  decks: Marker's PowerPoint provider flows all slides into one document paginated by
+  content height, so 34 slides became 15 "pages", 28 became 11, 10 became 2, and nothing
+  marked where a slide started. Marker's own `include_slide_number` option cannot be
+  enabled through its config in marker-pdf 2.0.0 - the slide HTML is built before the
+  config is applied - so it is set on the provider class directly.
+- **Not guaranteed**: speaker notes (dropped by Marker's provider; 324 words missing
+  from one real conference deck), WMF images (undecodable in testing on macOS), and `page` for
+  any Office file (a rendered-PDF page, not a Word page or slide number).
+
 **Table structure** (`docmd/postprocess/table_cleanup.py`)
 - Every row in a rendered table has the same column count as its header, padded or
   truncated as needed.

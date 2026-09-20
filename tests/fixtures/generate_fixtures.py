@@ -94,7 +94,26 @@ def generate_docx() -> None:
     doc.save(str(FIXTURES_DIR / "sample.docx"))
 
 
+def generate_pptx() -> None:
+    from pptx import Presentation
+
+    prs = Presentation()
+    slides = [
+        ("Quarterly Results", ["Revenue grew 14% quarter-over-quarter", "West region led growth"]),
+        ("Customer Retention", ["Churn held steady at 3.1%", "Enterprise deals closed 22% faster"]),
+        ("Outlook", ["Pipeline is strong", "Hiring resumes next quarter"]),
+    ]
+    for title, bullets in slides:
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = title
+        slide.placeholders[1].text_frame.text = bullets[0]
+        for bullet in bullets[1:]:
+            slide.placeholders[1].text_frame.add_paragraph().text = bullet
+    prs.save(str(FIXTURES_DIR / "sample.pptx"))
+
+
 if __name__ == "__main__":
     generate_pdf()
     generate_docx()
+    generate_pptx()
     print(f"wrote fixtures to {FIXTURES_DIR}")

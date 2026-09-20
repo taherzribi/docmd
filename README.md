@@ -46,7 +46,7 @@ core, usable standalone today.
 | PDF (text-based) | Markdown with preserved headings, lists, tables |
 | PDF (scanned) | Markdown via OCR — bundled by Marker, free, but needs [one extra native binary](#ocr-and-equations-need-one-native-binary) |
 | DOCX | Markdown with formatting preserved (`pip install docmd-cli[full]`) |
-| PPTX | Markdown, one section per slide (`pip install docmd-cli[full]`) |
+| PPTX | Markdown with a `Slide N` heading per slide (`pip install docmd-cli[full]`) - see [Office file limits](#office-file-limits) |
 
 ## Quickstart
 
@@ -128,6 +128,19 @@ This is architectural (concurrent batched inference under the hood), not a docmd
 bug and not fixable by a config flag alone - see [CONTRACT.md](CONTRACT.md) for the
 full investigation. Doesn't affect plain text-layer PDFs, only pages that actually
 go through OCR or equation recognition.
+
+## Office file limits
+
+Tested against 14 real DOCX/PPTX files (Apache POI's public test set): 95-100% of the
+source text ends up in the output. Three things to know:
+
+- **Speaker notes are not extracted.** Marker's PowerPoint provider ignores them
+  entirely. On a real conference deck that's 324 words of notes missing from the output.
+- **`page` in chunks is a rendered page, not a Word page or a slide.** DOCX and PPTX are
+  rendered to PDF first, so page breaks are the renderer's. For a deck, use the
+  `Slide N` section in a chunk's `section`, not `page`.
+- **WMF images couldn't be decoded** in testing on macOS (`cannot find loader for this
+  WMF file`). Logged as an error, non-fatal, the image is just absent.
 
 ## Image handling
 
