@@ -90,3 +90,36 @@ def test_ignores_non_chunk_json_files(tmp_path):
 def test_empty_query_returns_no_results(tmp_path):
     _write_chunks(tmp_path / "doc.json", [_chunk("revenue figures here")])
     assert search(tmp_path, "   ") == []
+
+
+def test_short_chunk_defining_a_rare_term_outranks_a_long_chunk_repeating_a_common_one(tmp_path):
+    """Found running search against a real arXiv paper: for "self-attention"
+    the top hit was a long bullet that repeats "attention" many times, ahead
+    of the short chunk that actually defines self-attention. Raw word counts
+    can't tell those apart; BM25's rare-term weighting and length
+    normalization can."""
+    filler = [_chunk(f"Unrelated filler paragraph number {i} about other topics entirely") for i in range(10)]
+    long_repeater = "attention " * 6 + "and then a lot of other words " * 10
+    _write_chunks(
+        tmp_path / "doc.json",
+        [
+            *filler,
+            _chunk(long_repeater),
+            _chunk("Self-attention is a mechanism relating positions of a sequence"),
+        ],
+    )
+    results = search(tmp_path, "self attention")
+    assert results[0].chunk.text.startswith("Self-attention is a mechanism")
+
+
+def test_repeated_query_words_are_not_double_counted(tmp_path):
+    """"revenue revenue" must score like "revenue", not double. The only
+    legitimate difference is the exact-phrase bonus, which the one-word query
+    earns (its phrase is in the text) and the repeated-word query doesn't."""
+    from docmd.search import _EXACT_PHRASE_BONUS
+
+    _write_chunks(tmp_path / "doc.json", [_chunk("revenue growth"), _chunk("revenue")])
+    once = search(tmp_path, "revenue")
+    twice = search(tmp_path, "revenue revenue")
+    assert [r.chunk.text for r in once] == [r.chunk.text for r in twice]
+    assert [round(r.score - _EXACT_PHRASE_BONUS, 6) for r in once] == [round(r.score, 6) for r in twice]

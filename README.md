@@ -280,7 +280,8 @@ annual-report.json
 
 Searches the RAG chunk JSON `docmd batch --format rag` already produced -
 not raw documents - so repeated searches don't reconvert anything. Keyword
-matching ranked by relevance (word frequency plus an exact-phrase bonus),
+matching ranked with BM25 (rare words weigh more than common ones, repeats
+saturate, long chunks are length-normalized) plus an exact-phrase bonus,
 not semantic search: a query for "revenue" won't find a chunk that only
 says "income". Semantic search is real future scope once there's a
 provider key to build and test an embedding-based mode against, the same

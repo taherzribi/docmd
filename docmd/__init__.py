@@ -19,7 +19,7 @@ from docmd.postprocess.rtl_fix import fix_rtl_brackets
 from docmd.postprocess.table_cleanup import clean_tables
 
 __all__ = ["convert", "convert_document", "ConvertConfig", "ConversionResult", "Chunk"]
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 
 
 def convert_document(
