@@ -246,6 +246,19 @@ notes. Commit `07efb73`.
   extracted 18 lines away from its own label. Genuine content, not a
   hallucination - a backend reading-order defect outside what
   Markdown-string post-processing can reliably repair.
+- **Heading depth on OCR'd/scanned PDFs.** Found on a real scanned handbook
+  forced through OCR: recognized text carries no font metadata at all, and
+  a genuine subsection ("Secretion of milk") came out ranked the same
+  level as the real chapter title before it. A line/box-height fallback
+  looked promising in isolation - chapter titles measured around 40,
+  section headings 16-29, on that document - but held up only on a hand
+  picked subset. Run end to end against the real document, a different
+  subsection was still misranked as a sibling of the chapter title instead
+  of nested under it: OCR line heights vary continuously across a
+  document, not in the clean discrete steps a real font size gives you, so
+  a fixed relative-tolerance clustering doesn't reliably separate them.
+  Not shipped - see [CONTRACT.md](CONTRACT.md) for what OCR'd headings
+  fall back to instead.
 
 See [CONTRACT.md](CONTRACT.md) for the complete, current list of what
 docmd guarantees and what it explicitly doesn't yet.

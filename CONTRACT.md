@@ -55,6 +55,20 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   eight same-style headings came out at levels 4, 2, 4, 3, 1, 3, 4, 4. Block/line
   height was tried as a fallback and measured too noisy (about 10% spread for one font
   size) to trust.
+- **Not guaranteed**: heading depth on OCR'd/scanned PDFs, where recognized text has no
+  font metadata at all (`font_size` is `None`, not just an unreal 1.0). Found on a real
+  scanned handbook, forced through OCR: a genuine subsection ("Secretion of milk") was
+  given the same raw `heading_level` as the real chapter title before it. Line/box
+  height was tried as a fallback signal specifically for this case - unlike the
+  1.0-font-size case above, it looked promising in isolation (chapter titles measured
+  around 40, section headings 16-29 on that document) - but a fixed relative-tolerance
+  clustering over the *whole* document did not hold up: run against the real document
+  end to end, a different subsection ("Secretion of milk" again, one level down) still
+  came out ranked as a sibling of the chapter title instead of nested under it, because
+  OCR line heights vary continuously across a document (glyph ascenders/descenders,
+  per-line fit) rather than in the clean discrete steps a real font size gives you. Not
+  shipped; unnumbered headings on OCR'd content fall back to Marker's own noisy level
+  plus the skip-clamp, same as the 1.0-font-size case.
 
 **PPTX slide boundaries** (`docmd/converters/marker_converter.py`)
 - Each slide gets a `Slide N` heading, so Markdown sections and chunk section
