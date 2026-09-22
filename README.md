@@ -134,8 +134,10 @@ go through OCR or equation recognition.
 Tested against 14 real DOCX/PPTX files (Apache POI's public test set): 95-100% of the
 source text ends up in the output. Three things to know:
 
-- **Speaker notes are not extracted.** Marker's PowerPoint provider ignores them
-  entirely. On a real conference deck that's 324 words of notes missing from the output.
+- **Speaker notes are extracted separately from Marker**, since its PowerPoint provider
+  ignores them entirely - read directly from the source file with `python-pptx` and
+  appended under their slide's heading as "**Speaker notes:**" (Markdown) or their own
+  chunk with `section="Slide N"` (`--format rag`).
 - **`page` in chunks is a rendered page, not a Word page or a slide.** DOCX and PPTX are
   rendered to PDF first, so page breaks are the renderer's. For a deck, use the
   `Slide N` section in a chunk's `section`, not `page`.

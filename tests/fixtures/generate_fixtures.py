@@ -99,16 +99,23 @@ def generate_pptx() -> None:
 
     prs = Presentation()
     slides = [
-        ("Quarterly Results", ["Revenue grew 14% quarter-over-quarter", "West region led growth"]),
-        ("Customer Retention", ["Churn held steady at 3.1%", "Enterprise deals closed 22% faster"]),
-        ("Outlook", ["Pipeline is strong", "Hiring resumes next quarter"]),
+        ("Quarterly Results", ["Revenue grew 14% quarter-over-quarter", "West region led growth"], None),
+        (
+            "Customer Retention",
+            ["Churn held steady at 3.1%", "Enterprise deals closed 22% faster"],
+            "Presenter context: the churn figure excludes self-serve accounts, which "
+            "improved independently this quarter.",
+        ),
+        ("Outlook", ["Pipeline is strong", "Hiring resumes next quarter"], None),
     ]
-    for title, bullets in slides:
+    for title, bullets, notes in slides:
         slide = prs.slides.add_slide(prs.slide_layouts[1])
         slide.shapes.title.text = title
         slide.placeholders[1].text_frame.text = bullets[0]
         for bullet in bullets[1:]:
             slide.placeholders[1].text_frame.add_paragraph().text = bullet
+        if notes:
+            slide.notes_slide.notes_text_frame.text = notes
     prs.save(str(FIXTURES_DIR / "sample.pptx"))
 
 

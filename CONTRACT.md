@@ -81,9 +81,14 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   slide's section instead of starting a new one. Reclassifying a block's own type on
   Marker's tree was not attempted - too invasive an intervention for one slide in 61,
   with unknown effects on whatever else in Marker's pipeline keys off that type.
-- **Not guaranteed**: speaker notes (dropped by Marker's provider; 324 words missing
-  from one real conference deck), WMF images (undecodable in testing on macOS), and `page` for
-  any Office file (a rendered-PDF page, not a Word page or slide number).
+- Speaker notes are extracted independent of Marker (whose PowerPoint provider ignores
+  them entirely), read directly from the source `.pptx` with `python-pptx`, and
+  attached under their own slide - "**Speaker notes:**" in Markdown, their own chunk
+  with `section="Slide N"` for RAG output. Found via a real conference deck: 324 words
+  of notes, otherwise entirely missing. 100% word recall confirmed on two real decks
+  that have notes.
+- **Not guaranteed**: WMF images (undecodable in testing on macOS), and `page` for any
+  Office file (a rendered-PDF page, not a Word page or slide number).
 
 **Table structure** (`docmd/postprocess/table_cleanup.py`)
 - Every row in a rendered table has the same column count as its header, padded or

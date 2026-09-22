@@ -193,8 +193,21 @@ every slide heading. One residual gap found and documented, not fixed: on one sl
 61 seen, Marker classified the "Slide N" text as a `Caption` block rather than a
 `SectionHeader`, so the text survives but isn't treated as a section boundary -
 reclassifying a block's own type was judged too invasive for one slide in 61. Also
-found: speaker notes are dropped by Marker's provider (324 words missing from one real
-conference deck), and WMF images couldn't be decoded in testing on macOS.
+found: WMF images couldn't be decoded in testing on macOS.
+
+### Speaker notes silently dropped from every PowerPoint conversion
+
+**Found on:** a real conference deck with 324 words of speaker notes across 12 slides.
+
+Marker's PowerPoint provider converts slides to a PDF via rendered HTML and never
+touches speaker notes - they simply never appear anywhere in the output, silently.
+
+**Fix:** read directly from the source `.pptx` with `python-pptx` (already a
+dependency - Marker's own provider uses it internally), independent of Marker
+entirely, and attached under the slide they belong to: "**Speaker notes:**" in
+Markdown, their own chunk with `section="Slide N"` for `--format rag`. 100% of the
+notes' distinct words recovered in both outputs, on both real decks tested that have
+notes. Commit `<pending>`.
 
 ## Claims verified, not just assumed
 

@@ -113,3 +113,38 @@ def test_pptx_slide_headings_survive_markers_running_header_detector():
     result = convert_document(str(FIXTURES / "many_slides.pptx"))
     for n in range(1, 21):
         assert f"Slide {n}" in result.markdown, f"Slide {n} heading was suppressed"
+
+
+@pytest.mark.skipif(
+    not _HAS_WEASYPRINT_DEPS,
+    reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed on this machine",
+)
+def test_pptx_speaker_notes_appear_under_their_own_slide():
+    """Real bug found via a real conference deck: Marker's PowerPoint
+    provider converts slides to a PDF via rendered HTML and never touches
+    speaker notes, so 324 words of real notes were entirely missing from
+    both Markdown and chunk output. Read directly from the source .pptx
+    with python-pptx (already a dependency, used by Marker's own provider),
+    independent of Marker, and attached under the slide they belong to."""
+    result = convert_document(str(FIXTURES / "sample.pptx"))
+    idx2 = result.markdown.index("Slide 2")
+    idx3 = result.markdown.index("Slide 3")
+    assert "Speaker notes" in result.markdown[idx2:idx3]
+    assert "self-serve accounts" in result.markdown[idx2:idx3]
+    # Not leaked onto a slide that has no notes of its own.
+    assert "self-serve accounts" not in result.markdown[:idx2]
+    assert "self-serve accounts" not in result.markdown[idx3:]
+
+
+@pytest.mark.skipif(
+    not _HAS_WEASYPRINT_DEPS,
+    reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed on this machine",
+)
+def test_pptx_speaker_notes_become_their_own_chunk():
+    from docmd.config import ConvertConfig
+
+    result = convert_document(str(FIXTURES / "sample.pptx"), config=ConvertConfig(include_chunks=True))
+    notes_chunks = [c for c in result.chunks if "self-serve accounts" in c.text]
+    assert len(notes_chunks) == 1
+    assert notes_chunks[0].section == "Slide 2"
+    assert notes_chunks[0].content_type == "text"

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from docmd.config import ConvertConfig
-from docmd.converters.base import ConversionResult
+from docmd.converters.base import Chunk, ConversionResult
 from docmd.converters.chunk_extraction import extract_chunks
 from docmd.converters.chunk_merge import merge_chunks
 from docmd.errors import (
@@ -76,6 +76,7 @@ def _marker_version() -> str:
 
 
 _SLIDE_HEADING_RE = re.compile(r"^Slide \d+$")
+_SLIDE_HEADING_LINE_RE = re.compile(r"^#+\s*\**Slide (\d+)\**\s*$")
 
 
 def _unsuppress_slide_headings(document: Any) -> None:
@@ -126,6 +127,74 @@ def _enable_slide_headings() -> None:
     from marker.providers.powerpoint import PowerPointProvider
 
     PowerPointProvider.include_slide_number = True
+
+
+def _extract_pptx_notes(filepath: str) -> dict[int, str]:
+    """1-indexed slide number -> speaker notes text, for slides that have
+    any. Read directly from the source .pptx with python-pptx (already a
+    dependency - Marker's own PowerPoint provider uses it internally),
+    independent of Marker entirely: Marker's provider converts slides to a
+    PDF via rendered HTML and never touches notes, so they're absent from
+    both Markdown and chunk output with no docmd intervention. Found via a
+    real conference deck: 324 words of notes, entirely missing."""
+    from pptx import Presentation
+
+    notes: dict[int, str] = {}
+    for index, slide in enumerate(Presentation(filepath).slides, start=1):
+        if not slide.has_notes_slide:
+            continue
+        text_frame = slide.notes_slide.notes_text_frame
+        text = (text_frame.text if text_frame is not None else "").strip()
+        if text:
+            notes[index] = text
+    return notes
+
+
+def _inject_pptx_notes_into_markdown(markdown: str, notes: dict[int, str]) -> str:
+    if not notes:
+        return markdown
+    lines = markdown.splitlines()
+    starts = [
+        (i, int(m.group(1))) for i, line in enumerate(lines) if (m := _SLIDE_HEADING_LINE_RE.match(line))
+    ]
+    if not starts:
+        return markdown
+    rebuilt = list(lines[: starts[0][0]])
+    for position, (start_idx, slide_number) in enumerate(starts):
+        end_idx = starts[position + 1][0] if position + 1 < len(starts) else len(lines)
+        rebuilt.extend(lines[start_idx:end_idx])
+        note = notes.get(slide_number)
+        if note:
+            rebuilt += ["", "**Speaker notes:**", "", note, ""]
+    return "\n".join(rebuilt) + ("\n" if markdown.endswith("\n") else "")
+
+
+def _inject_pptx_notes_into_chunks(chunks: list[Chunk], notes: dict[int, str]) -> list[Chunk]:
+    if not notes:
+        return chunks
+
+    def slide_number(section: str) -> int | None:
+        head = section.split(" > ", 1)[0]
+        return int(head.removeprefix("Slide ")) if _SLIDE_HEADING_RE.match(head) else None
+
+    out: list[Chunk] = []
+    for index, chunk in enumerate(chunks):
+        out.append(chunk)
+        current = slide_number(chunk.section)
+        if current is None or current not in notes:
+            continue
+        next_slide = slide_number(chunks[index + 1].section) if index + 1 < len(chunks) else None
+        if next_slide != current:
+            out.append(
+                Chunk(
+                    text=notes[current],
+                    page=chunk.page,
+                    section=f"Slide {current}",
+                    content_type="text",
+                    bbox=chunk.bbox,
+                )
+            )
+    return out
 
 
 def _build_config_dict(config: ConvertConfig):
@@ -211,6 +280,8 @@ class MarkerConverter:
 
         duration_ms = int((time.monotonic() - start) * 1000)
         markdown, _, images = text_from_rendered(rendered)
+        pptx_notes = _extract_pptx_notes(filepath) if is_pptx else {}
+        markdown = _inject_pptx_notes_into_markdown(markdown, pptx_notes)
         metadata = dict(getattr(rendered, "metadata", {}) or {})
         page_stats = metadata.get("page_stats", [])
         page_count = len(page_stats) or 1
@@ -232,6 +303,8 @@ class MarkerConverter:
         }
 
         chunks = extract_chunks(document) if config.include_chunks and document is not None else None
+        if chunks is not None and pptx_notes:
+            chunks = _inject_pptx_notes_into_chunks(chunks, pptx_notes)
         if chunks is not None and config.chunk_max_tokens is not None:
             chunks = merge_chunks(chunks, config.chunk_max_tokens)
 
