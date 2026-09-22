@@ -207,7 +207,7 @@ dependency - Marker's own provider uses it internally), independent of Marker
 entirely, and attached under the slide they belong to: "**Speaker notes:**" in
 Markdown, their own chunk with `section="Slide N"` for `--format rag`. 100% of the
 notes' distinct words recovered in both outputs, on both real decks tested that have
-notes. Commit `<pending>`.
+notes. Commit `07efb73`.
 
 ## Claims verified, not just assumed
 
