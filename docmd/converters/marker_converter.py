@@ -9,6 +9,7 @@ based on the file's actual content, via `provider_from_filepath`.
 from __future__ import annotations
 
 import importlib.metadata
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -72,6 +73,37 @@ def _marker_version() -> str:
         except importlib.metadata.PackageNotFoundError:
             _marker_version_cache = "unknown"
     return _marker_version_cache
+
+
+_SLIDE_HEADING_RE = re.compile(r"^Slide \d+$")
+
+
+def _unsuppress_slide_headings(document: Any) -> None:
+    r"""Undoes a real Marker bug found via real decks: IgnoreTextProcessor
+    strips trailing digits before comparing text across pages
+    (`re.sub(r"\s*\d+$", "", text)`), so "Slide 1", "Slide 2", "Slide 3" all
+    collapse to the identical string "Slide" and get flagged as a repeated
+    running header/footer - exactly the pattern that heuristic exists to
+    catch, misfiring on the one heading docmd itself asked Marker to insert.
+    ignore_for_output blocks are dropped before rendering (both Markdown and
+    chunks never see them), so this has to run on the block tree, which is
+    why PPTX always takes the two-step build+render path below, not just
+    when chunks are requested. Only a heading whose text is exactly "Slide
+    N" is touched - Marker's suppression of a real repeated header/footer
+    elsewhere in the deck is left alone.
+
+    Checked against every block type, not just SectionHeader: on one real
+    deck, the "Slide 15" text was classified as a Caption block (Marker's
+    layout model, not a text-content decision docmd controls) - the
+    suppression bug and this fix for it are about the *text*, independent
+    of whatever type Marker happened to assign it."""
+    for page in document.pages:
+        for block_id in page.structure or []:
+            block = document.get_block(block_id)
+            if not block.ignore_for_output:
+                continue
+            if _SLIDE_HEADING_RE.match((block.raw_text(document) or "").strip()):
+                block.ignore_for_output = False
 
 
 def _enable_slide_headings() -> None:
@@ -148,14 +180,19 @@ class MarkerConverter:
                 renderer=config_parser.get_renderer(),
                 llm_service=config_parser.get_llm_service(),
             )
-            if config.include_chunks:
+            is_pptx = filepath.lower().endswith(".pptx")
+            if config.include_chunks or is_pptx:
                 # Same two steps PdfConverter.__call__() does internally -
                 # done explicitly here so the pre-render Document (blocks,
-                # pages, geometry) stays available for extract_chunks()
-                # below, instead of being discarded once rendered to
-                # Markdown. Not taken for the default case, so existing
-                # callers see byte-identical behavior to before this existed.
+                # pages, geometry) is available: for extract_chunks() below
+                # when chunks are requested, and unconditionally for PPTX so
+                # _unsuppress_slide_headings() can run before ignore_for_output
+                # blocks are dropped by the renderer. For any other case,
+                # existing callers see byte-identical behavior to before
+                # either of these existed.
                 document = converter.build_document(filepath)
+                if is_pptx:
+                    _unsuppress_slide_headings(document)
                 renderer = converter.resolve_dependencies(converter.renderer)
                 rendered = renderer(document)
             else:
@@ -194,7 +231,7 @@ class MarkerConverter:
             "conversion_duration_ms": duration_ms,
         }
 
-        chunks = extract_chunks(document) if document is not None else None
+        chunks = extract_chunks(document) if config.include_chunks and document is not None else None
         if chunks is not None and config.chunk_max_tokens is not None:
             chunks = merge_chunks(chunks, config.chunk_max_tokens)
 

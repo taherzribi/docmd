@@ -64,6 +64,23 @@ fixture gets caught even if it isn't the fixture that originally found the bug.
   marked where a slide started. Marker's own `include_slide_number` option cannot be
   enabled through its config in marker-pdf 2.0.0 - the slide HTML is built before the
   config is applied - so it is set on the provider class directly.
+- The `Slide N` heading itself always survives, even on a large deck. Found via the
+  same real decks: Marker's own running-header/footer detector strips trailing digits
+  before comparing text across pages, so "Slide 1", "Slide 2", "Slide 3", ... all
+  collapse to the identical string "Slide" and get flagged as a repeated header/footer
+  - exactly the pattern that detector exists to catch, misfiring on the heading docmd
+  itself asked Marker to insert. Three real decks lost 8 of 34, 8 of 28, and 8 of 24
+  slide headings to this. `_unsuppress_slide_headings()` reverses Marker's own
+  suppression flag for any block whose text is exactly `Slide N`, regardless of what
+  block type Marker assigned it, before the renderer drops the block entirely.
+- **Not guaranteed**: that a restored `Slide N` marker renders as a heading rather than
+  plain bold text. Found on one slide of 61 seen across six real decks: Marker
+  classified the "Slide 15" text as a `Caption` block, not `SectionHeader` - the text
+  survives (the fix above still applies), but docmd only treats `SectionHeader` blocks
+  as section boundaries, so that slide's content stayed nested under the previous
+  slide's section instead of starting a new one. Reclassifying a block's own type on
+  Marker's tree was not attempted - too invasive an intervention for one slide in 61,
+  with unknown effects on whatever else in Marker's pipeline keys off that type.
 - **Not guaranteed**: speaker notes (dropped by Marker's provider; 324 words missing
   from one real conference deck), WMF images (undecodable in testing on macOS), and `page` for
   any Office file (a rendered-PDF page, not a Word page or slide number).

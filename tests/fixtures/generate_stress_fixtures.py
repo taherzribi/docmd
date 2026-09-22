@@ -145,9 +145,31 @@ def generate_rotated_page() -> None:
     (FIXTURES_DIR / "_gen_rotated.pdf").unlink()
 
 
+def generate_many_slides_pptx() -> None:
+    """20 slides, each with enough body text that several land on the same
+    rendered PDF page - reproduces a real Marker bug: IgnoreTextProcessor
+    strips trailing digits before comparing text across pages, so docmd's
+    own "Slide 1", "Slide 2", ... headings all collapse to the identical
+    string "Slide" and get flagged as a repeated running header/footer,
+    exactly like the heuristic they're meant to catch. See
+    marker_converter._unsuppress_slide_headings()."""
+    from pptx import Presentation
+
+    prs = Presentation()
+    for i in range(1, 21):
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = f"Topic number {i}"
+        text_frame = slide.placeholders[1].text_frame
+        text_frame.text = f"First point about topic {i}"
+        for j in range(2, 6):
+            text_frame.add_paragraph().text = f"Point {j} about topic {i} with some extra words to take space"
+    prs.save(str(FIXTURES_DIR / "many_slides.pptx"))
+
+
 if __name__ == "__main__":
     generate_running_header()
     generate_merged_cells()
     generate_with_image()
     generate_rotated_page()
+    generate_many_slides_pptx()
     print(f"wrote stress fixtures to {FIXTURES_DIR}")

@@ -170,10 +170,31 @@ in marker-pdf 2.0.0: the slide HTML is built before the config is applied, so it
 never be enabled through config.
 
 **Fix:** set on Marker's provider class directly. After, a real 9-slide deck produces
-exactly 9 `Slide N` sections with titles nested beneath. The same test found and
-documented (not fixed) three limits: speaker notes are dropped by Marker, WMF images
-couldn't be decoded in testing on macOS, and `page` for Office files is a rendered-PDF page.
-Text recall on all 14 real DOCX/PPTX files was 95-100%.
+exactly 9 `Slide N` sections with titles nested beneath. Text recall on all 14 real
+DOCX/PPTX files was 95-100%.
+
+### The fix for the fix: Marker's own header detector ate the slide headings
+
+**Found on:** the same six real decks, after shipping the fix above.
+
+Enabling `Slide N` headings didn't mean they survived: three real decks were still
+missing 8 of 34, 8 of 28, and 8 of 24 of them. Marker's `IgnoreTextProcessor` - the
+detector that correctly filters a real repeated running header, elsewhere in this same
+page - strips trailing digits before comparing text across pages
+(`re.sub(r"\s*\d+$", "", text)`), so "Slide 1", "Slide 2", "Slide 3", ... all collapse
+to the identical string "Slide" and get flagged as a repeated header - the exact
+pattern that detector exists to catch, misfiring on the one heading docmd itself asked
+Marker to insert.
+
+**Fix:** `docmd/converters/marker_converter.py:_unsuppress_slide_headings()` reverses
+Marker's own suppression flag for any block whose text is exactly `Slide N`, on the
+block tree, before the renderer drops it. All three previously-broken decks now keep
+every slide heading. One residual gap found and documented, not fixed: on one slide of
+61 seen, Marker classified the "Slide N" text as a `Caption` block rather than a
+`SectionHeader`, so the text survives but isn't treated as a section boundary -
+reclassifying a block's own type was judged too invasive for one slide in 61. Also
+found: speaker notes are dropped by Marker's provider (324 words missing from one real
+conference deck), and WMF images couldn't be decoded in testing on macOS.
 
 ## Claims verified, not just assumed
 

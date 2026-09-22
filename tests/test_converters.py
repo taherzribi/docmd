@@ -93,3 +93,23 @@ def test_pptx_chunk_sections_name_their_slide():
     assert slide_roots == {"Slide 1", "Slide 2", "Slide 3"}
     titled = [c for c in result.chunks if c.section == "Slide 2 > Customer Retention"]
     assert titled, "slide title should nest under its slide heading"
+
+
+@pytest.mark.skipif(
+    not _HAS_WEASYPRINT_DEPS,
+    reason="weasyprint's native deps (Pango/GObject/Cairo) aren't installed on this machine",
+)
+def test_pptx_slide_headings_survive_markers_running_header_detector():
+    """Real bug found via six real conference/organization decks: Marker's
+    IgnoreTextProcessor strips trailing digits before comparing text across
+    pages, so docmd's own "Slide 1", "Slide 2", ... headings all collapse to
+    the identical string "Slide" and get flagged as a repeated running
+    header/footer - the exact pattern that heuristic exists to catch,
+    misfiring on the one heading docmd asked Marker to insert. Real decks
+    lost 8 of 34, 8 of 28, and 8 of 24 slide headings to this before the fix
+    (marker_converter._unsuppress_slide_headings). many_slides.pptx (20
+    slides, several per rendered PDF page) reproduces the same trigger
+    conditions without redistributing a real document."""
+    result = convert_document(str(FIXTURES / "many_slides.pptx"))
+    for n in range(1, 21):
+        assert f"Slide {n}" in result.markdown, f"Slide {n} heading was suppressed"
